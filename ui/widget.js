@@ -45,14 +45,14 @@ function render(now = Date.now()) {
   $('sub').textContent = over
     ? `${hours(view.remind_hours).replace(/\.00$/, '')} hrs done, time out?`
     : t.open
-    ? 'since ' + clock(t.since, PH) + ' PH'
+    ? 'since ' + clock(t.since, PH) + ' Manila'
     : t.holiday ? (t.holidayName || 'Holiday') + ' · 8 hrs' : t.leave ? `${hours(t.hours)} hrs leave` : 'not clocked in';
 
   const btn = $('punchBtn');
   btn.disabled = busy || !ready;
   btn.textContent = busy ? '…' : t.open ? 'Time Out' : holidayArmed ? 'Work anyway?' : 'Time In';
   btn.classList.toggle('out', t.open);
-  $('forgotLabel').textContent = `I actually ${t.open ? 'timed out' : 'timed in'} at (PH)`;
+  $('forgotLabel').textContent = `I actually ${t.open ? 'timed out' : 'timed in'} at (Manila)`;
   $('forgotSave').textContent = t.open ? 'Time Out' : 'Time In';
   $('forgotSave').disabled = busy;
 
@@ -91,7 +91,7 @@ async function punch(at = null) {
   try {
     view = await punchNow(invoke, t, at);
     const now = todayState(view, holidayMap(holidays));
-    flash(now.open ? `Timed in at ${clock(now.since, PH)} PH` : `Timed out · ${hours(now.hours)} hrs today`);
+    flash(now.open ? `Timed in at ${clock(now.since, PH)} Manila` : `Timed out · ${hours(now.hours)} hrs today`);
   } catch (e) {
     flash(String(e), true);
   } finally {

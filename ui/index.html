@@ -18,8 +18,9 @@
       <button data-view="holidays">Holidays</button>
       <button data-view="settings">Settings</button>
     </nav>
+    <div class="activity" id="activity" aria-live="polite"></div>
     <div class="clocks">
-      <div class="clock-row"><span class="zone">Eastern</span><span id="clockEt">--:--</span></div>
+      <div class="clock-row"><span class="zone">New York</span><span id="clockEt">--:--</span></div>
       <div class="clock-row"><span class="zone">Manila</span><span id="clockPh">--:--</span></div>
     </div>
     <div class="sync" id="syncLine">&nbsp;</div>
@@ -31,7 +32,7 @@
       <header class="page-head">
         <div>
           <h1 id="todayTitle">Today</h1>
-          <p class="muted" id="todaySub">Eastern Time</p>
+          <p class="muted" id="todaySub">New York time</p>
         </div>
       </header>
 
@@ -53,7 +54,7 @@
               <button type="submit" id="forgotSave">Save</button>
               <button type="button" class="ghost" id="forgotCancel">Cancel</button>
             </div>
-            <p class="muted small">Your Mac's time (Manila). The timesheet shows it in Eastern.</p>
+            <p class="muted small">Your Mac's time (Manila). The timesheet shows it in New York time.</p>
           </form>
           <ul class="entries" id="entries"></ul>
         </div>
@@ -154,7 +155,7 @@
       <header class="page-head">
         <div>
           <h1>Settings</h1>
-          <p class="muted">Times are recorded in Eastern Time, as the timesheet template asks.</p>
+          <p class="muted">Times are recorded in New York time, as the timesheet template asks.</p>
         </div>
       </header>
 
@@ -200,7 +201,7 @@
   <dialog id="dayDialog">
     <form method="dialog" id="dayForm">
       <h2 id="dayTitle">Day</h2>
-      <p class="muted small">Times are Eastern, as on the timesheet.</p>
+      <p class="muted small">Times are New York time, as on the timesheet.</p>
       <div class="type-row" id="dayTypes">
         <label><input type="radio" name="dayType" value="work"> Worked</label>
         <label><input type="radio" name="dayType" value="leave"> Leave</label>

@@ -42,6 +42,30 @@ async function working(button, label, fn) {
   }
 }
 
+/**
+ * Background work shown in the sidebar above the clocks (e.g. importing history), so the
+ * app stays usable while it runs. Returns { update(text), done(text), fail(text) }.
+ */
+function activity(text) {
+  const box = $('activity');
+  const item = document.createElement('div');
+  item.className = 'activity-item running';
+  item.innerHTML = '<span class="dot"></span><span class="text"></span>';
+  const label = item.querySelector('.text');
+  label.textContent = text;
+  box.append(item);
+  const finish = (cls, msg, ms) => {
+    item.className = 'activity-item ' + cls;
+    label.textContent = msg;
+    setTimeout(() => { item.classList.add('leaving'); setTimeout(() => item.remove(), 400); }, ms);
+  };
+  return {
+    update: msg => { label.textContent = msg; },
+    done: msg => finish('done', msg, 5000),
+    fail: msg => finish('failed', msg, 9000),
+  };
+}
+
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
 // ---- Rendering: Today ----
@@ -80,7 +104,7 @@ function renderToday(now = Date.now()) {
 
   const state = $('heroState');
   if (t.open) {
-    state.textContent = `Working · since ${clock(t.since)} ET (${clock(t.since, PH)} PH)`;
+    state.textContent = `Working · since ${clock(t.since)} New York (${clock(t.since, PH)} Manila)`;
     state.className = 'state on';
   } else if (t.leave) {
     state.textContent = 'On leave';
@@ -128,7 +152,7 @@ function renderStats(t, now) {
   const H = holidays();
   $('statToday').textContent = hours(t.hours);
 
-  // Week (Mon–Sun, Eastern), today live.
+  // Week (Mon–Sun, New York dates), today live.
   const monday = addDays(t.key, -((weekday(t.key) + 6) % 7));
   let week = 0;
   for (let i = 0; i < 7; i++) {
@@ -167,7 +191,7 @@ function renderChart(period, t) {
   labels.className = 'labels';
   for (const d of period.days) {
     const credit = d.type === 'holiday' || d.type === 'leave';
-    const cls = (credit ? ' holiday' : '') + (d.weekend ? ' weekend' : '') +
+    const cls = (credit ? ' holiday' : '') + (d.weekend ? ' weekend' : '') + (d.hours === 0 ? ' empty' : '') +
       (d.date > t.key ? ' future' : '') + (d.date === t.key ? ' today' : '');
     const bar = document.createElement('div');
     bar.className = 'bar' + cls;
@@ -431,7 +455,7 @@ function renderSheetBox(box, onboarding) {
   const connected = sheetMode() && view.has_sheet;
   const status = connected
     ? `<p class="small ${view.sync_error ? 'error-text' : 'muted'}">${view.sync_error ? esc(view.sync_error)
-      : `Connected${view.sheet_name ? ' to “' + esc(view.sheet_name) + '”' : ''}${view.synced_at ? ' · synced ' + fmt(view.synced_at, { hour: 'numeric', minute: '2-digit' }, PH) + ' PH' : ''}`}</p>`
+      : `Connected${view.sheet_name ? ' to “' + esc(view.sheet_name) + '”' : ''}${view.synced_at ? ' · synced ' + fmt(view.synced_at, { hour: 'numeric', minute: '2-digit' }, PH) : ''}`}</p>`
     : '';
   const fields = `
     <label>Web app URL <input type="url" class="sb-url" placeholder="https://script.google.com/macros/s/…/exec" value="${esc(view.api_url || '')}"></label>
@@ -473,6 +497,7 @@ function renderSheetBox(box, onboarding) {
     });
     const legacy = box.querySelector('.sb-legacy');
     if (legacy) legacy.onclick = () => working(legacy, 'Importing…', () => importHistory(true));
+    // (progress also shows in the sidebar)
   }
   wireCopy(box);
 }
@@ -523,12 +548,13 @@ async function syncSheet(quiet = true) {
   if (!sheetMode() || !view.has_sheet || syncing) return;
   syncing = true;
   renderSyncLine();
+  const task = quiet ? null : activity('Syncing with your Google Sheet…');
   try {
     const data = await invoke('sheet_sync', { years: yearsToSync() });
     if (data.notes && data.notes.length) toast(data.notes.join('\n'));
-    else if (!quiet) toast('Synced with your Google Sheet');
+    if (task) task.done('✓ Synced with your sheet');
   } catch (e) {
-    if (!quiet) toast(String(e), true);
+    if (task) task.fail(`Sync failed: ${e}`);
   } finally {
     syncing = false;
     view = await invoke('load');
@@ -568,6 +594,7 @@ function legacyDays(snapshot) {
 }
 
 async function importHistory(legacyOnly = false) {
+  const task = activity('Importing your history…');
   try {
     let days = null;
     if (!legacyOnly && view.has_sheet) {
@@ -579,11 +606,20 @@ async function importHistory(legacyOnly = false) {
       }
     }
     if (!days) days = legacyDays(await invoke('legacy_snapshot'));
-    const [added, next] = await invoke('import_days', { days });
-    view = next;
-    toast(added ? `Imported ${added} day${added > 1 ? 's' : ''} from your Google Sheet.` : 'Nothing new to import. Those days are already in Narra.');
+    // One period at a time, so the sidebar can say where it's up to.
+    const groups = {};
+    for (const [date, day] of Object.entries(days)) (groups[periodBounds(date).start] ||= {})[date] = day;
+    let added = 0;
+    for (const start of Object.keys(groups).sort()) {
+      task.update(`Importing ${buildPeriod(view, start, holidays()).title}…`);
+      const [n, next] = await invoke('import_days', { days: groups[start] });
+      added += n;
+      view = next;
+      renderAll();
+    }
+    task.done(added ? `✓ Imported ${added} day${added > 1 ? 's' : ''}` : '✓ History already up to date');
   } catch (e) {
-    toast(String(e), true);
+    task.fail(`Import failed: ${e}`);
   }
   renderAll();
 }
@@ -641,12 +677,13 @@ $('stepMode').onsubmit = e => {
     return;
   }
   const doImport = !$('obImportRow').hidden && $('obImport').checked;
-  working(e.submitter || $('stepMode').querySelector('button[type=submit]'), doImport ? 'Importing…' : 'Setting up…', async () => {
+  working(e.submitter || $('stepMode').querySelector('button[type=submit]'), 'Setting up…', async () => {
     try {
-      // Use the copy of the sheet Narra already has: instant, and no calls to the sheet.
-      if (doImport) await importHistory(view.legacy_import);
       view = await invoke('set_mode', { mode: 'local' });
       finishOnboarding();
+      // Runs in the background; progress shows in the sidebar. Uses the copy of the sheet
+      // Narra already has when there is one (no calls to the sheet).
+      if (doImport) importHistory(view.legacy_import);
     } catch (err) {
       toast(String(err), true);
     }
@@ -705,7 +742,7 @@ async function punch(at = null) {
     return;
   }
   if (at !== null && t.open && at <= t.since) {
-    toast(`Time out must be after your time in (${clock(t.since, PH)} PH).`, true);
+    toast(`Time out must be after your time in (${clock(t.since, PH)} Manila).`, true);
     return;
   }
   holidayArmed = false;
@@ -713,7 +750,7 @@ async function punch(at = null) {
   try {
     view = await punchNow(invoke, t, at);
     const now = today();
-    toast(now.open ? `Timed in at ${clock(now.since, PH)} PH (${clock(now.since)} ET)` : `Timed out. ${hours(now.hours)} hrs today.`);
+    toast(now.open ? `Timed in at ${clock(now.since, PH)} Manila (${clock(now.since)} New York)` : `Timed out. ${hours(now.hours)} hrs today.`);
   } catch (e) {
     toast(String(e), true);
   } finally {
