@@ -1,0 +1,123 @@
+/* Desktop widget: sits on the native HUD-glass effect (rounded by the window), so the
+   page itself stays transparent and only draws content. Styled after macOS widgets. */
+
+:root {
+  --ink: #ffffff;
+  --muted: rgba(255, 255, 255, .58);
+  --faint: rgba(255, 255, 255, .12);
+  --go: #4cc76a;
+  --stop: #ff5f57;
+  --gold: #f6b93b;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; background: transparent; overflow: hidden; }
+body {
+  color: var(--ink);
+  font: 13px/1.3 -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+  cursor: default;
+}
+[hidden] { display: none !important; }
+
+.widget {
+  position: relative;
+  height: 100%;
+  padding: 14px 16px 13px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+button {
+  font: inherit;
+  border: 0;
+  cursor: pointer;
+  color: inherit;
+  background: none;
+  padding: 0;
+}
+
+header { display: flex; justify-content: space-between; align-items: center; }
+.brand { display: flex; align-items: center; gap: 6px; font-weight: 700; font-size: 13px; }
+.brand svg { width: 17px; height: 17px; }
+.brand .petals { fill: var(--gold); }
+.brand .face { fill: #fff6e0; }
+.brand .hands { fill: none; stroke: #6b210f; stroke-width: 1.3; stroke-linecap: round; }
+.brand:hover { opacity: .8; }
+
+.pill {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 99px;
+  background: var(--faint);
+  color: var(--muted);
+}
+.pill.on { background: rgba(76, 199, 106, .2); color: var(--go); }
+.pill.holiday { background: rgba(246, 185, 59, .2); color: var(--gold); }
+.pill.warn { background: rgba(246, 185, 59, .2); color: var(--gold); }
+
+.main { flex: 1; display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 0; }
+.timer { font-size: 34px; font-weight: 700; letter-spacing: -.02em; font-variant-numeric: tabular-nums; line-height: 1.05; }
+.sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+.actions { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.punch {
+  width: 104px;
+  padding: 9px 0;
+  border-radius: 99px;
+  font-weight: 700;
+  font-size: 14px;
+  background: var(--go);
+  color: #0c2a14;
+}
+.punch.out { background: var(--stop); color: #3a0906; }
+.punch.small { width: auto; padding: 7px 14px; font-size: 13px; }
+.punch:disabled { opacity: .45; cursor: default; }
+.punch:not(:disabled):active { transform: scale(.97); }
+.forgot-link { font-size: 11px; color: var(--muted); }
+.forgot-link:hover { color: var(--ink); }
+
+.forgot { flex-direction: column; align-items: stretch; justify-content: center; gap: 6px; }
+.forgot label { font-size: 12px; font-weight: 600; color: var(--muted); }
+.forgot .row { display: flex; gap: 6px; align-items: center; }
+.forgot input {
+  flex: 1;
+  min-width: 0;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink);
+  background: var(--faint);
+  border: 0;
+  border-radius: 8px;
+  padding: 6px 8px;
+  user-select: text;
+}
+.forgot input:focus { outline: 2px solid var(--gold); outline-offset: -2px; }
+.ghost { width: 28px; height: 28px; border-radius: 99px; background: var(--faint); color: var(--muted); }
+
+.setup { flex-direction: column; align-items: flex-start; justify-content: center; gap: 8px; }
+.setup p { margin: 0; color: var(--muted); }
+
+footer { display: flex; gap: 6px; border-top: 1px solid var(--faint); padding-top: 8px; }
+.stat { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+.stat.holiday { flex: 1.5; }
+.stat .label { font-size: 10px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
+.stat .value { font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.flash {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: 10px;
+  padding: 7px 10px;
+  border-radius: 10px;
+  background: rgba(20, 20, 20, .92);
+  font-size: 12px;
+  line-height: 1.3;
+}
+.flash.error { background: rgba(120, 24, 20, .95); }

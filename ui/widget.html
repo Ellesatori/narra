@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Narra Widget</title>
+  <link rel="stylesheet" href="widget.css">
+</head>
+<body>
+  <div class="widget" data-tauri-drag-region>
+    <header data-tauri-drag-region>
+      <button class="brand" id="openMain" title="Open Narra">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><g class="petals"><ellipse cx="12.00" cy="6.80" rx="4.6" ry="5.4" transform="rotate(0 12.00 6.80)"/><ellipse cx="16.95" cy="10.39" rx="4.6" ry="5.4" transform="rotate(72 16.95 10.39)"/><ellipse cx="15.06" cy="16.21" rx="4.6" ry="5.4" transform="rotate(144 15.06 16.21)"/><ellipse cx="8.94" cy="16.21" rx="4.6" ry="5.4" transform="rotate(216 8.94 16.21)"/><ellipse cx="7.05" cy="10.39" rx="4.6" ry="5.4" transform="rotate(288 7.05 10.39)"/></g><circle class="face" cx="12" cy="12" r="3.6"/><path class="hands" d="M12 9.6V12l-1.8 1"/></svg>
+        Narra
+      </button>
+      <span class="pill" id="pill" data-tauri-drag-region>Off</span>
+    </header>
+
+    <!-- Normal state -->
+    <section class="main" id="mainPane" data-tauri-drag-region>
+      <div class="clock" data-tauri-drag-region>
+        <div class="timer" id="timer" data-tauri-drag-region>0:00:00</div>
+        <div class="sub" id="sub" data-tauri-drag-region>&nbsp;</div>
+      </div>
+      <div class="actions">
+        <button class="punch" id="punchBtn" disabled>Time In</button>
+        <button class="forgot-link" id="forgotBtn" title="Forgot to punch? Set the time">Set time…</button>
+      </div>
+    </section>
+
+    <!-- Forgot-to-punch picker -->
+    <form class="main forgot" id="forgotPane" hidden>
+      <label for="forgotTime" id="forgotLabel">I actually timed in at</label>
+      <div class="row">
+        <input type="time" id="forgotTime" required>
+        <button type="submit" class="punch small" id="forgotSave">Time In</button>
+        <button type="button" class="ghost" id="forgotCancel" aria-label="Cancel">✕</button>
+      </div>
+    </form>
+
+    <!-- Not connected yet -->
+    <section class="main setup" id="setupPane" hidden>
+      <p>Connect your timesheet to start tracking.</p>
+      <button class="punch small" id="setupBtn">Open Settings</button>
+    </section>
+
+    <footer data-tauri-drag-region>
+      <div class="stat" data-tauri-drag-region><span class="label">Today</span><span class="value" id="statToday">0.00</span></div>
+      <div class="stat" data-tauri-drag-region><span class="label">Period</span><span class="value" id="statPeriod">—</span></div>
+      <div class="stat holiday" data-tauri-drag-region><span class="label">Next holiday</span><span class="value" id="statHoliday">—</span></div>
+    </footer>
+
+    <div class="flash" id="flash" hidden></div>
+  </div>
+  <script src="shared.js"></script>
+  <script src="widget.js"></script>
+</body>
+</html>
