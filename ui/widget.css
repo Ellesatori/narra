@@ -41,11 +41,8 @@ button {
 }
 
 header { display: flex; justify-content: space-between; align-items: center; }
+.brand .logo { width: 18px; height: 18px; object-fit: contain; }
 .brand { display: flex; align-items: center; gap: 6px; font-weight: 700; font-size: 13px; }
-.brand svg { width: 17px; height: 17px; }
-.brand .petals { fill: var(--gold); }
-.brand .face { fill: #fff6e0; }
-.brand .hands { fill: none; stroke: #6b210f; stroke-width: 1.3; stroke-linecap: round; }
 .brand:hover { opacity: .8; }
 
 .pill {

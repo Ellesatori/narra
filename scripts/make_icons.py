@@ -1,123 +1,140 @@
-"""Draw Narra's app icon (1024px, fed to `tauri icon`) and the menu-bar template icon.
+"""Build Narra's icons from the pixel-art logo (src-tauri/icons/narra-source.png):
 
-The mark is a five-petal narra blossom (the Philippine national tree has small golden
-flowers) whose center is a clock face. Pure stdlib: shapes are signed-distance
-functions, antialiased by coverage.
+- app-icon.png (1024): the tree on a rounded cream tile, scaled nearest-neighbour so the
+  pixel art stays crisp. Feed it to `npx tauri icon` for the .icns/.ico set.
+- tray.png (64): menu-bar template image — the tree's silhouette with the clock hands and
+  ticks cut out.
+- ui/narra.png (256): the logo for the sidebar, onboarding and widget.
 """
-import math
-import struct
 import sys
-import zlib
 from pathlib import Path
 
-PETALS = 5
+sys.path.insert(0, str(Path(__file__).parent))
+from pngio import read_png, write_png  # noqa: E402
+
+ROOT = Path(__file__).resolve().parent.parent
+SRC = ROOT / 'src-tauri/icons/narra-source.png'
 
 
-def write_png(path, size, pixels):
-    raw = b"".join(b"\x00" + bytes(pixels[y * size * 4:(y + 1) * size * 4]) for y in range(size))
-    chunk = lambda tag, data: struct.pack(">I", len(data)) + tag + data + struct.pack(">I", zlib.crc32(tag + data))
-    png = b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", struct.pack(">IIBBBBB", size, size, 8, 6, 0, 0, 0))
-    png += chunk(b"IDAT", zlib.compress(raw, 9)) + chunk(b"IEND", b"")
-    Path(path).write_bytes(png)
+def bbox(w, h, px):
+    xs = [x for x in range(w) if any(px[(y * w + x) * 4 + 3] > 128 for y in range(0, h, 2))]
+    ys = [y for y in range(h) if any(px[(y * w + x) * 4 + 3] > 128 for x in range(0, w, 2))]
+    return xs[0], ys[0], xs[-1] + 1, ys[-1] + 1
 
 
-def sd_round_rect(x, y, half, radius):
-    qx, qy = abs(x) - half + radius, abs(y) - half + radius
-    return math.hypot(max(qx, 0), max(qy, 0)) + min(max(qx, qy), 0) - radius
+def crop(w, px, box):
+    x0, y0, x1, y1 = box
+    cw, ch = x1 - x0, y1 - y0
+    out = bytearray(cw * ch * 4)
+    for y in range(ch):
+        s = ((y0 + y) * w + x0) * 4
+        out[y * cw * 4:(y + 1) * cw * 4] = px[s:s + cw * 4]
+    return cw, ch, out
 
 
-def sd_segment(x, y, ax, ay, bx, by, r):
-    px, py, dx, dy = x - ax, y - ay, bx - ax, by - ay
-    t = max(0.0, min(1.0, (px * dx + py * dy) / (dx * dx + dy * dy)))
-    return math.hypot(px - dx * t, py - dy * t) - r
+def sample_nearest(sw, sh, src, dw, dh):
+    out = bytearray(dw * dh * 4)
+    for y in range(dh):
+        sy = min(sh - 1, int((y + 0.5) * sh / dh))
+        for x in range(dw):
+            sx = min(sw - 1, int((x + 0.5) * sw / dw))
+            o, s = (y * dw + x) * 4, (sy * sw + sx) * 4
+            out[o:o + 4] = src[s:s + 4]
+    return out
 
 
-def sd_petals(x, y, dist, radius):
-    """Union of PETALS rounded petals: circles on a ring, stretched outward into ovals."""
-    best = 1e9
-    for k in range(PETALS):
-        a = math.radians(k * 360 / PETALS)
-        ux, uy = math.sin(a), -math.cos(a)
-        # Petal-local coords: u along the petal axis, v across it.
-        u = (x * ux + y * uy) - dist
-        v = -x * uy + y * ux
-        best = min(best, math.hypot(u * 0.78, v) - radius * 0.9)
-    return best
+def sample_area(sw, sh, src, dw, dh, value=None):
+    """Box-filter downscale (premultiplied). value(px_index) -> alpha override for masks."""
+    out = bytearray(dw * dh * 4)
+    for y in range(dh):
+        ya, yb = int(y * sh / dh), max(int(y * sh / dh) + 1, int((y + 1) * sh / dh))
+        for x in range(dw):
+            xa, xb = int(x * sw / dw), max(int(x * sw / dw) + 1, int((x + 1) * sw / dw))
+            r = g = b = a = n = 0
+            for yy in range(ya, yb):
+                for xx in range(xa, xb):
+                    i = (yy * sw + xx) * 4
+                    al = src[i + 3] if value is None else value(i)
+                    r += src[i] * al; g += src[i + 1] * al; b += src[i + 2] * al; a += al; n += 1
+            o = (y * dw + x) * 4
+            if a:
+                out[o:o + 3] = bytes((round(r / a), round(g / a), round(b / a)))
+            out[o + 3] = round(a / n)
+    return out
 
 
-def sd_hands(x, y, s):
-    """Hour hand toward 10 o'clock, minute hand toward 12."""
-    a = math.radians(-60)
-    hour = sd_segment(x, y, 0, 0, math.sin(a) * 0.55 * s, -math.cos(a) * 0.55 * s, 0.12 * s)
-    minute = sd_segment(x, y, 0, 0, 0, -0.8 * s, 0.1 * s)
-    return min(hour, minute)
-
-
-def cover(d, px):
-    return max(0.0, min(1.0, 0.5 - d / px))
-
-
-def mix(a, b, t):
-    return [a[k] + (b[k] - a[k]) * t for k in range(3)]
-
-
-def app_icon(size):
-    px = 2.0 / size
+def rounded_tile(size, inset, radius, top, bottom):
     out = bytearray(size * size * 4)
-    wood_top, wood_bottom = (0xB4, 0x4A, 0x24), (0x6B, 0x21, 0x0F)
-    petal_light, petal_dark = (0xFF, 0xD8, 0x5C), (0xF2, 0xA9, 0x1E)
-    cream, ink = (0xFF, 0xF6, 0xE0), (0x6B, 0x21, 0x0F)
-    for j in range(size):
-        y = (j + 0.5) / size * 2 - 1
-        for i in range(size):
-            x = (i + 0.5) / size * 2 - 1
-            a_bg = cover(sd_round_rect(x, y, 0.82, 0.19), px)
-            if a_bg == 0:
+    lo, hi = inset, size - inset
+    for y in range(size):
+        t = (y - lo) / (hi - lo)
+        col = [round(top[k] + (bottom[k] - top[k]) * t) for k in range(3)]
+        for x in range(size):
+            dx = max(lo + radius - x, 0, x - (hi - radius) + 1)
+            dy = max(lo + radius - y, 0, y - (hi - radius) + 1)
+            d = (dx * dx + dy * dy) ** 0.5
+            if x < lo or x >= hi or y < lo or y >= hi:
                 continue
-            r = math.hypot(x, y)
-            rgb = mix(wood_top, wood_bottom, (y + 1) / 2)
-            # Soft shadow under the flower.
-            shadow = cover(sd_petals(x, y - 0.03, 0.3, 0.27) - 0.02, 0.08)
-            rgb = mix(rgb, (0x3A, 0x10, 0x05), 0.35 * shadow)
-            petals = cover(sd_petals(x, y, 0.3, 0.27), px)
-            rgb = mix(rgb, mix(petal_light, petal_dark, min(1.0, r / 0.6)), petals)
-            # Petal veins: thin darker lines along each petal axis.
-            vein = 1e9
-            for k in range(PETALS):
-                a = math.radians(k * 360 / PETALS)
-                vein = min(vein, sd_segment(x, y, math.sin(a) * 0.2, -math.cos(a) * 0.2,
-                                            math.sin(a) * 0.46, -math.cos(a) * 0.46, 0.006))
-            rgb = mix(rgb, petal_dark, 0.8 * cover(vein, px) * petals)
-            face = cover(r - 0.2, px)
-            rgb = mix(rgb, cream, face)
-            hands = max(cover(sd_hands(x, y, 0.17), px), cover(r - 0.028, px))
-            rgb = mix(rgb, ink, hands * face)
-            o = (j * size + i) * 4
-            out[o:o + 4] = bytes([round(rgb[0]), round(rgb[1]), round(rgb[2]), round(255 * a_bg)])
+            cover = 1.0 if (dx == 0 or dy == 0) and d <= radius else max(0.0, min(1.0, radius - d + 0.5))
+            if dx == 0 and dy == 0:
+                cover = 1.0
+            o = (y * size + x) * 4
+            out[o:o + 4] = bytes(col + [round(255 * cover)])
     return out
 
 
-def tray_icon(size):
-    """Template image: solid blossom with the clock face cut out and hands inside."""
-    px = 2.0 / size
-    out = bytearray(size * size * 4)
-    for j in range(size):
-        y = (j + 0.5) / size * 2 - 1
-        for i in range(size):
-            x = (i + 0.5) / size * 2 - 1
-            r = math.hypot(x, y)
-            blossom = cover(sd_petals(x, y, 0.5, 0.46), px)
-            hole = cover(r - 0.36, px)
-            hands = max(cover(sd_hands(x, y, 0.3), px), cover(r - 0.06, px))
-            alpha = blossom * (1 - hole) + hands * hole
-            o = (j * size + i) * 4
-            out[o:o + 4] = bytes([0, 0, 0, round(255 * alpha)])
-    return out
+def over(dst, size, src, sw, sh, ox, oy):
+    for y in range(sh):
+        for x in range(sw):
+            s = (y * sw + x) * 4
+            a = src[s + 3] / 255
+            if a == 0:
+                continue
+            d = ((oy + y) * size + ox + x) * 4
+            for k in range(3):
+                dst[d + k] = round(src[s + k] * a + dst[d + k] * (1 - a))
+            dst[d + 3] = max(dst[d + 3], src[s + 3])
 
 
-if __name__ == "__main__":
-    icons = Path(sys.argv[1] if len(sys.argv) > 1 else "src-tauri/icons")
-    icons.mkdir(parents=True, exist_ok=True)
-    write_png(icons / "app-icon.png", 1024, app_icon(1024))
-    write_png(icons / "tray.png", 64, tray_icon(64))
-    print("wrote", icons / "app-icon.png", icons / "tray.png")
+def main():
+    w, h, px = read_png(SRC)
+    box = bbox(w, h, px)
+    cw, ch, art = crop(w, px, box)
+
+    # App icon: cream tile (macOS icon grid: 824px tile inside 1024), tree ~76% of the tile.
+    size, inset = 1024, 100
+    icon = rounded_tile(size, inset, 185, (0xFB, 0xF4, 0xE2), (0xEE, 0xE2, 0xC4))
+    target = 640
+    scale = target / max(cw, ch)
+    tw, th = round(cw * scale), round(ch * scale)
+    tree = sample_nearest(cw, ch, art, tw, th)
+    over(icon, size, tree, tw, th, (size - tw) // 2, (size - th) // 2 + 14)
+    write_png(ROOT / 'src-tauri/icons/app-icon.png', size, size, icon)
+
+    # UI logo.
+    side = max(cw, ch)
+    sq = bytearray(side * side * 4)
+    over(sq, side, art, cw, ch, (side - cw) // 2, (side - ch) // 2)
+    write_png(ROOT / 'ui/narra.png', 256, 256, sample_area(side, side, sq, 256, 256))
+
+    # Tray template: silhouette; cream clock marks (inside the canopy's centre) become holes.
+    def cream(i):
+        r, g, b = sq[i], sq[i + 1], sq[i + 2]
+        return r > 200 and g > 190 and b > 150
+    cx0, cy0, cx1, cy1 = int(side * 0.27), int(side * 0.18), int(side * 0.73), int(side * 0.62)
+
+    def mask(i):
+        p = i // 4
+        x, y = p % side, p // side
+        if cx0 <= x < cx1 and cy0 <= y < cy1 and cream(i):
+            return 0
+        return 255 if sq[i + 3] > 128 else 0
+    tray = sample_area(side, side, sq, 64, 64, value=mask)
+    for i in range(0, len(tray), 4):
+        tray[i:i + 3] = b'\x00\x00\x00'
+    write_png(ROOT / 'src-tauri/icons/tray.png', 64, 64, tray)
+    print('wrote app-icon.png, tray.png, ui/narra.png')
+
+
+if __name__ == '__main__':
+    main()

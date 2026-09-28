@@ -106,11 +106,8 @@ input:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
   background: var(--side);
   border-right: 1px solid var(--line);
 }
+.brand .logo { width: 24px; height: 24px; object-fit: contain; }
 .brand { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 15px; padding: 0 8px; }
-.brand svg { width: 22px; height: 22px; }
-.brand .petals { fill: #f2b233; }
-.brand .face { fill: #fff6e0; }
-.brand .hands { fill: none; stroke: #6b210f; stroke-width: 1.2; stroke-linecap: round; }
 nav { display: flex; flex-direction: column; gap: 2px; }
 nav button {
   text-align: left;
@@ -393,7 +390,7 @@ details.import[open] { display: flex; flex-direction: column; gap: 10px; }
   box-shadow: var(--shadow);
 }
 .brand.big { font-size: 22px; padding: 0; margin-bottom: 14px; }
-.brand.big svg { width: 32px; height: 32px; }
+.brand.big .logo { width: 40px; height: 40px; }
 .step { display: flex; flex-direction: column; gap: 14px; }
 .step > label { display: flex; flex-direction: column; gap: 6px; font-weight: 600; }
 .step label.toggle { flex-direction: row; align-items: center; gap: 8px; font-weight: 500; }
