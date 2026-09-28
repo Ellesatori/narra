@@ -9,15 +9,20 @@ every timesheet period (including archived months).
 - `src-tauri/`: Rust backend. Local store, offline punch queue, Nager.Date holidays, tray.
 - `ui/`: plain HTML/CSS/JS front end (no bundler).
 
-## One-time setup
+## How it works
 
-1. Apps Script editor → **Deploy → New deployment → Web app**
-   - Execute as: **Me** · Who has access: **Anyone**
-   - Authorize when Google asks. Copy the **Web app URL**.
-2. Reload the sheet → **🌼 Narra → Desktop app key…** → copy the key.
-3. Narra → **Settings** → paste URL + key → **Save & sync**.
-
-The URL alone does nothing: every request must carry the key.
+- First launch: onboarding asks for name + monthly rate, then where the timesheet lives:
+  - **On this Mac** (recommended): days are stored in the app's `store.json` and backed up to
+    `~/Documents/Narra/narra-backup.json` after every change. *Download PDF* writes the
+    timesheet (same layout as the Google Sheets template's PDF) to `~/Documents/timesheets/`.
+  - **Google Sheet sync**: every change is also written to the user's sheet, and edits made in
+    the sheet come back on the next sync (the sheet wins for dates it has rows for). Setup guide
+    and *Copy script* are built into the app.
+- `apps-script/Code.gs` finds the sheet's layout itself (header labels "Time In", "Time Out",
+  "Total", "Day/Date"; date rows; rows per day), so it works on any copy of the template.
+  Deploy as a web app: Execute as **Me**, access **Anyone** (the app key protects it).
+- Pay (same formula as the template): `rate / 2 + 1.3 × (rate / 160) × overtime`, overtime =
+  hours beyond 8 × weekdays in the period. The app shows the formula with the real numbers.
 
 ## Build
 

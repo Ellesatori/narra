@@ -247,3 +247,98 @@ table.sheet td.holiday-cell { color: var(--holiday); font-weight: 600; }
   .two-col, .hero { grid-template-columns: 1fr; }
   .summary { grid-template-columns: repeat(3, 1fr); }
 }
+
+/* Formula breakdown */
+details.formula summary { display: flex; align-items: baseline; gap: 10px; cursor: pointer; list-style: none; }
+details.formula summary::-webkit-details-marker { display: none; }
+details.formula summary::before { content: '▸'; color: var(--muted); font-size: 12px; }
+details.formula[open] summary::before { content: '▾'; }
+.formula-body { margin-top: 12px; display: flex; flex-direction: column; }
+.f-row { display: grid; grid-template-columns: 150px 1fr auto; gap: 12px; padding: 7px 0; border-top: 1px solid var(--line); align-items: baseline; }
+.f-label { font-weight: 600; }
+.f-math { color: var(--muted); font-variant-numeric: tabular-nums; }
+.f-result { font-weight: 600; font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
+.formula-body p { margin-top: 10px; }
+
+/* Timesheets */
+table.sheet tr.editable { cursor: pointer; }
+table.sheet tr.editable:hover td { background: var(--accent-soft); }
+.file-list { list-style: none; margin: 0; padding: 0; }
+.file-list li { display: flex; justify-content: space-between; gap: 12px; padding: 8px 2px; border-top: 1px solid var(--line); cursor: pointer; }
+.file-list li:first-child { border-top: 0; }
+.file-list li:hover .name { text-decoration: underline; }
+
+/* Day editor */
+dialog {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 22px;
+  width: min(460px, calc(100vw - 40px));
+  background: var(--card);
+  color: var(--ink);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, .25);
+}
+dialog::backdrop { background: rgba(0, 0, 0, .35); }
+dialog form { display: flex; flex-direction: column; gap: 12px; }
+dialog h2 { font-size: 17px; }
+dialog p { margin: -6px 0 0; }
+.type-row { display: flex; gap: 14px; flex-wrap: wrap; }
+.type-row label { display: flex; align-items: center; gap: 5px; }
+.session-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.session-row input { flex: 1; }
+.hours-row { display: flex; align-items: center; gap: 10px; font-weight: 600; }
+.hours-row input { width: 90px !important; }
+.row.end { justify-content: flex-end; }
+#addSession { align-self: flex-start; }
+
+/* Settings: storage mode and sheet guide */
+.mode-pick { display: flex; flex-direction: column; gap: 8px; }
+.mode-card {
+  display: flex !important;
+  flex-direction: row !important;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  font-weight: 400 !important;
+  cursor: pointer;
+}
+.mode-card:has(input:checked) { border-color: var(--accent); background: var(--accent-soft); }
+.mode-card input { margin-top: 3px; }
+.sheet-box { display: flex; flex-direction: column; gap: 10px; }
+.sheet-box:empty { display: none; }
+.sheet-box label { display: flex; flex-direction: column; gap: 6px; font-weight: 600; }
+ol.guide { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 8px; line-height: 1.5; }
+ol.guide code { font-size: 12px; background: var(--bg); padding: 1px 5px; border-radius: 4px; }
+.small-btn { padding: 3px 10px; font-size: 12px; margin: 0 4px; }
+.error-text { color: var(--stop); }
+details.import summary { cursor: pointer; }
+details.import[open] { display: flex; flex-direction: column; gap: 10px; }
+
+/* Onboarding */
+.onboard {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: grid;
+  place-items: center;
+  background: var(--bg);
+  overflow-y: auto;
+  padding: 24px;
+}
+.onboard-card {
+  width: min(560px, 100%);
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  padding: 28px;
+  box-shadow: var(--shadow);
+}
+.brand.big { font-size: 22px; padding: 0; margin-bottom: 14px; }
+.brand.big svg { width: 32px; height: 32px; }
+.step { display: flex; flex-direction: column; gap: 14px; }
+.step > label { display: flex; flex-direction: column; gap: 6px; font-weight: 600; }
+.step label.toggle { flex-direction: row; align-items: center; gap: 8px; font-weight: 500; }
+.step p { margin: 0; }
+.row { display: flex; gap: 8px; align-items: center; }

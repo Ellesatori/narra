@@ -22,7 +22,7 @@
       <div class="clock-row"><span class="zone">Eastern</span><span id="clockEt">--:--</span></div>
       <div class="clock-row"><span class="zone">Manila</span><span id="clockPh">--:--</span></div>
     </div>
-    <div class="sync" id="syncLine">Not synced yet</div>
+    <div class="sync" id="syncLine">&nbsp;</div>
   </aside>
 
   <main>
@@ -31,11 +31,11 @@
       <header class="page-head">
         <div>
           <h1 id="todayTitle">Today</h1>
-          <p class="muted" id="todaySub">&nbsp;</p>
+          <p class="muted" id="todaySub">Eastern Time</p>
         </div>
       </header>
 
-      <div class="banner" id="pendingBanner" hidden></div>
+      <div class="banner" id="syncBanner" hidden></div>
 
       <div class="hero card">
         <div class="hero-main">
@@ -44,7 +44,7 @@
           <div class="muted" id="heroNote">&nbsp;</div>
         </div>
         <div class="hero-side">
-          <button class="punch" id="punchBtn" disabled>Time In</button>
+          <button class="punch" id="punchBtn">Time In</button>
           <button class="link" id="forgotBtn" type="button">Forgot to time in? Set the time</button>
           <form class="forgot" id="forgotForm" hidden>
             <label for="forgotTime" id="forgotLabel">I actually timed in at</label>
@@ -53,7 +53,7 @@
               <button type="submit" id="forgotSave">Save</button>
               <button type="button" class="ghost" id="forgotCancel">Cancel</button>
             </div>
-            <p class="muted small" id="forgotHint">Your Mac's time (Manila). Saved to the sheet in Eastern.</p>
+            <p class="muted small">Your Mac's time (Manila). The timesheet shows it in Eastern.</p>
           </form>
           <ul class="entries" id="entries"></ul>
         </div>
@@ -68,7 +68,7 @@
 
       <div class="two-col">
         <div class="card">
-          <div class="card-head"><h2 id="chartTitle">This period</h2><span class="muted" id="chartLegend">8 h line</span></div>
+          <div class="card-head"><h2 id="chartTitle">This period</h2><span class="muted small">dashed line = 8 hrs</span></div>
           <div class="chart" id="chart"></div>
         </div>
         <div class="card">
@@ -76,6 +76,11 @@
           <ul class="holiday-list compact" id="upcoming"></ul>
         </div>
       </div>
+
+      <details class="card formula" id="todayFormula" open>
+        <summary><h2>How your pay is calculated</h2><span class="muted small">this period, with your numbers</span></summary>
+        <div class="formula-body"></div>
+      </details>
     </section>
 
     <!-- Timesheets -->
@@ -83,10 +88,10 @@
       <header class="page-head">
         <div>
           <h1>Timesheets</h1>
-          <p class="muted">Every period in your sheet, including archived months.</p>
+          <p class="muted">Click a day to fix times or mark leave. Download PDF saves to Documents › timesheets.</p>
         </div>
       </header>
-      <div class="chips" id="tabChips"></div>
+      <div class="chips" id="periodChips"></div>
       <div class="card" id="sheetCard">
         <div class="card-head">
           <div>
@@ -94,8 +99,8 @@
             <span class="muted" id="sheetSub"></span>
           </div>
           <div class="actions">
-            <button class="ghost" id="openSheetBtn">Open in Google Sheets</button>
-            <button class="ghost" id="pdfBtn">Download PDF</button>
+            <button id="pdfBtn">Download PDF</button>
+            <button class="ghost" id="openSheetBtn" hidden>Open Google Sheet</button>
           </div>
         </div>
         <div class="summary" id="sheetSummary"></div>
@@ -104,6 +109,17 @@
           <tbody id="sheetRows"></tbody>
         </table>
       </div>
+      <details class="card formula" id="periodFormula">
+        <summary><h2>How this period is calculated</h2></summary>
+        <div class="formula-body"></div>
+      </details>
+      <div class="card">
+        <div class="card-head">
+          <h2>Saved PDFs</h2>
+          <button class="ghost" id="openFolderBtn">Open folder</button>
+        </div>
+        <ul class="file-list" id="pdfList"></ul>
+      </div>
     </section>
 
     <!-- Holidays -->
@@ -111,7 +127,7 @@
       <header class="page-head">
         <div>
           <h1>Philippine holidays</h1>
-          <p class="muted">Weekday holidays are written to the sheet as “Holiday” with 8 hours. Clocking in on a holiday replaces the credit with your actual hours.</p>
+          <p class="muted">A weekday holiday counts as 8 hours automatically. If you clock in that day, your real hours count instead.</p>
         </div>
         <div class="year-nav">
           <button class="ghost icon" id="yearPrev" aria-label="Previous year">‹</button>
@@ -138,49 +154,121 @@
       <header class="page-head">
         <div>
           <h1>Settings</h1>
-          <p class="muted">Times are recorded in Eastern Time, as your timesheet template asks.</p>
+          <p class="muted">Times are recorded in Eastern Time, as the timesheet template asks.</p>
         </div>
       </header>
-      <form class="card form" id="settingsForm">
-        <h2>Google Sheet connection</h2>
-        <label>Web app URL
-          <input type="url" id="apiUrl" placeholder="https://script.google.com/macros/s/…/exec" required>
+
+      <form class="card form" id="profileForm">
+        <h2>You</h2>
+        <label>Name <span class="muted small">(top of your timesheet PDF)</span>
+          <input type="text" id="profileName" autocomplete="name" required>
         </label>
-        <label>App key
-          <input type="password" id="apiKey" placeholder="Paste the key from 🌼 Narra → Desktop app key…">
-        </label>
-        <div class="row">
-          <button type="submit">Save &amp; sync</button>
-          <button type="button" class="ghost" id="openSheetLink">Open Google Sheet</button>
-        </div>
-      </form>
-      <div class="card form">
-        <h2>Pay</h2>
         <label>Monthly rate (USD)
-          <input type="number" id="monthlyRate" min="0" step="0.01" inputmode="decimal">
+          <input type="number" id="profileRate" min="0" step="0.01" inputmode="decimal" placeholder="e.g. 1600">
         </label>
-        <p class="muted small">Expected pay uses the same formula as the timesheet: half your monthly rate per period,
-          plus overtime (hours beyond 8 × weekdays) at 1.3 × rate ÷ 160 per hour. Leave empty to use the rate in your sheet.
-          Stored only on this Mac.</p>
-      </div>
+        <div class="row"><button type="submit">Save</button></div>
+      </form>
+
       <div class="card form">
-        <h2>App</h2>
-        <label class="toggle"><input type="checkbox" id="widgetToggle"> Show the desktop widget (drag it anywhere on your desktop)</label>
+        <h2>Where your timesheet lives</h2>
+        <div class="mode-pick" id="modePick">
+          <label class="mode-card"><input type="radio" name="mode" value="local">
+            <span><b>On this Mac</b> <span class="badge custom">recommended</span><br>
+            <span class="muted small">Nothing to set up. Download PDFs to submit. Backed up to Documents › Narra.</span></span></label>
+          <label class="mode-card"><input type="radio" name="mode" value="sheet">
+            <span><b>Sync with a Google Sheet</b><br>
+            <span class="muted small">Narra also writes every punch to your sheet, and picks up edits you make there.</span></span></label>
+        </div>
+        <div id="sheetBox" class="sheet-box"></div>
+      </div>
+
+      <div class="card form">
+        <h2>Reminders &amp; widget</h2>
         <label class="toggle"><input type="checkbox" id="remindToggle"> Remind me to time out after
           <input type="number" id="remindHours" min="0.5" max="24" step="0.5" class="inline-num"> hours of work in a day</label>
         <p class="muted small indent">Sends a notification, then every 30 minutes until you time out.
           <button type="button" class="link inline" id="testReminder">Send a test reminder</button></p>
+        <label class="toggle"><input type="checkbox" id="widgetToggle"> Show the desktop widget (drag it anywhere on your desktop)</label>
         <label class="toggle"><input type="checkbox" id="autostart"> Open Narra when I log in (starts in the menu bar)</label>
-        <div class="row">
-          <button type="button" class="ghost" id="syncNow">Sync now</button>
-        </div>
         <p class="muted small">Closing the window keeps the clock running in the menu bar. Use the menu-bar icon → Quit to stop it.</p>
+        <p class="muted small" id="backupNote"></p>
       </div>
     </section>
   </main>
 
+  <!-- Day editor -->
+  <dialog id="dayDialog">
+    <form method="dialog" id="dayForm">
+      <h2 id="dayTitle">Day</h2>
+      <p class="muted small">Times are Eastern, as on the timesheet.</p>
+      <div class="type-row" id="dayTypes">
+        <label><input type="radio" name="dayType" value="work"> Worked</label>
+        <label><input type="radio" name="dayType" value="leave"> Leave</label>
+        <label><input type="radio" name="dayType" value="holiday"> Holiday</label>
+        <label><input type="radio" name="dayType" value="off"> Day off</label>
+      </div>
+      <div id="daySessions"></div>
+      <button type="button" class="ghost" id="addSession">+ Add time in / out</button>
+      <label id="dayHoursRow" class="hours-row">Hours credited <input type="number" id="dayHours" min="0" max="24" step="0.25"></label>
+      <p class="muted small" id="dayHint"></p>
+      <div class="row end">
+        <button type="button" class="ghost" id="dayCancel">Cancel</button>
+        <button type="submit" id="daySave">Save</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- First-run onboarding -->
+  <div class="onboard" id="onboard" hidden>
+    <div class="onboard-card">
+      <div class="brand big">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><g class="petals"><ellipse cx="12.00" cy="6.80" rx="4.6" ry="5.4" transform="rotate(0 12.00 6.80)"/><ellipse cx="16.95" cy="10.39" rx="4.6" ry="5.4" transform="rotate(72 16.95 10.39)"/><ellipse cx="15.06" cy="16.21" rx="4.6" ry="5.4" transform="rotate(144 15.06 16.21)"/><ellipse cx="8.94" cy="16.21" rx="4.6" ry="5.4" transform="rotate(216 8.94 16.21)"/><ellipse cx="7.05" cy="10.39" rx="4.6" ry="5.4" transform="rotate(288 7.05 10.39)"/></g><circle class="face" cx="12" cy="12" r="3.6"/><path class="hands" d="M12 9.6V12l-1.8 1"/></svg>
+        Welcome to Narra
+      </div>
+
+      <form class="step" id="stepProfile">
+        <p>Narra clocks your hours and builds your biweekly timesheet. Two quick things first.</p>
+        <label>Your name <span class="muted small">(as it should appear on your timesheet)</span>
+          <input type="text" id="obName" autocomplete="name" required>
+        </label>
+        <label>Monthly rate (USD)
+          <input type="number" id="obRate" min="0" step="0.01" inputmode="decimal" placeholder="e.g. 1600" required>
+        </label>
+        <p class="muted small">Used for your expected pay: half of it per period, plus overtime at 1.3 × rate ÷ 160 per hour. It stays on this Mac.</p>
+        <div class="row end"><button type="submit">Continue</button></div>
+      </form>
+
+      <form class="step" id="stepMode" hidden>
+        <p>Where should your timesheet live?</p>
+        <div class="mode-pick">
+          <label class="mode-card"><input type="radio" name="obMode" value="local" checked>
+            <span><b>On this Mac</b> <span class="badge custom">recommended</span><br>
+            <span class="muted small">Nothing to set up. When it's time to submit, Narra makes the PDF in the usual timesheet layout.</span></span></label>
+          <label class="mode-card"><input type="radio" name="obMode" value="sheet">
+            <span><b>Sync with my Google Sheet</b><br>
+            <span class="muted small">For people who want their Google Sheet kept up to date too. Takes about 5 minutes; we'll guide you.</span></span></label>
+        </div>
+        <label class="toggle" id="obImportRow" hidden><input type="checkbox" id="obImport" checked> <span id="obImportText">Bring in my history from Google Sheets</span></label>
+        <div class="row end">
+          <button type="button" class="ghost" id="obBack">Back</button>
+          <button type="submit">Continue</button>
+        </div>
+      </form>
+
+      <div class="step" id="stepSheet" hidden>
+        <p>Connect your Google Sheet.</p>
+        <div class="sheet-box" id="obSheetBox"></div>
+        <div class="row end">
+          <button type="button" class="ghost" id="obSheetBack">Back</button>
+          <button type="button" class="ghost" id="obSheetLocal">Use this Mac instead</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <div class="toast" id="toast" role="status" hidden></div>
   <script src="shared.js"></script>
+  <script src="pdf.js"></script>
   <script src="app.js"></script>
 </body>
 </html>
