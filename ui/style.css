@@ -67,6 +67,20 @@ button {
 button.ghost { background: transparent; color: var(--ink); border: 1px solid var(--line); }
 button.ghost:hover { background: var(--accent-soft); }
 button:disabled { opacity: .5; cursor: default; }
+button.busy { opacity: .75; cursor: progress; }
+button.busy::before {
+  content: '';
+  display: inline-block;
+  width: 11px;
+  height: 11px;
+  margin-right: 7px;
+  vertical-align: -1px;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: spin .7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
 button.icon { padding: 4px 10px; font-size: 16px; line-height: 1; }
 
 input[type=text], input[type=url], input[type=password], input[type=date], input[type=time], input[type=number]:not(.inline-num) {
@@ -263,6 +277,20 @@ details.formula[open] summary::before { content: '▾'; }
 /* Timesheets */
 table.sheet tr.editable { cursor: pointer; }
 table.sheet tr.editable:hover td { background: var(--accent-soft); }
+table.sheet td.edit-cell { width: 1%; white-space: nowrap; text-align: right; padding-left: 4px; }
+.row-edit {
+  padding: 3px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  background: transparent;
+  color: var(--muted);
+  border: 1px solid var(--line);
+  border-radius: 99px;
+}
+tr.editable:hover .row-edit { color: var(--accent-ink); background: var(--accent); border-color: var(--accent); }
+table.sheet tr.saved td { animation: saved-flash 4s ease-out; }
+@keyframes saved-flash { 0%, 40% { background: var(--accent-soft); } 100% { background: transparent; } }
+.saved-tag { font-size: 12px; font-weight: 700; color: var(--accent); }
 .file-list { list-style: none; margin: 0; padding: 0; }
 .file-list li { display: flex; justify-content: space-between; gap: 12px; padding: 8px 2px; border-top: 1px solid var(--line); cursor: pointer; }
 .file-list li:first-child { border-top: 0; }

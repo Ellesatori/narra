@@ -16,10 +16,32 @@ let syncing = false;
 let holidayArmed = false;    // second click needed to clock in on a holiday
 let lastTray = null;
 let editing = null;          // date open in the day editor
+let justSaved = null;        // date to highlight after an edit
 
 const holidays = () => holidayMap(Object.values(holidayLists));
 const today = (now = Date.now()) => todayState(view, holidays(), now);
 const sheetMode = () => view && view.mode === 'sheet';
+/**
+ * Run fn while `button` shows `label` and is disabled; a second click while it runs is
+ * ignored instead of queueing another run.
+ */
+async function working(button, label, fn) {
+  if (!button || button.dataset.busy) return;
+  const text = button.textContent;
+  button.dataset.busy = '1';
+  button.disabled = true;
+  button.classList.add('busy');
+  button.textContent = label;
+  try {
+    return await fn();
+  } finally {
+    delete button.dataset.busy;
+    button.disabled = false;
+    button.classList.remove('busy');
+    button.textContent = text;
+  }
+}
+
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
 // ---- Rendering: Today ----
@@ -235,7 +257,7 @@ function renderTimesheets() {
   $('sheetSub').textContent = `${period.periodText}${live ? ' · current period' : ''}`;
   $('openSheetBtn').hidden = !(sheetMode() && view.sheet_url);
   $('openSheetBtn').onclick = () => openUrl(view.sheet_url);
-  $('pdfBtn').onclick = () => downloadPdf(period);
+  $('pdfBtn').onclick = () => working($('pdfBtn'), 'Saving PDF…', () => downloadPdf(period));
 
   const rate = view.monthly_rate;
   const p = payFor(period, period.total, rate);
@@ -267,8 +289,13 @@ function renderTimesheets() {
       if (d.sessions.length > 2) slots[3] += ` (+${d.sessions.length - 2} more)`;
       cells = slots.map(v => `<td>${v || (d.weekend ? '' : '—')}</td>`).join('');
     }
-    tr.innerHTML = `<td>${d.label}</td>${cells}<td class="num">${hours(d.hours)}</td>`;
+    tr.innerHTML = `<td>${d.label}</td>${cells}<td class="num">${hours(d.hours)}</td>` +
+      `<td class="edit-cell"><button type="button" class="row-edit" aria-label="Edit ${d.label}">✎ Edit</button></td>`;
     tr.onclick = () => openEditor(d.date);
+    if (d.date === justSaved) {
+      tr.classList.add('saved');
+      tr.querySelector('.edit-cell').innerHTML = '<span class="saved-tag">✓ Saved</span>';
+    }
     rows.append(tr);
   }
   renderFormula($('periodFormula'), period, live);
@@ -396,6 +423,7 @@ function renderSettings() {
  * Settings. In local mode (Settings) it becomes a one-time "import history" tool.
  */
 function renderSheetBox(box, onboarding) {
+  if (box.querySelector('[data-busy]')) return;
   const wantSheet = onboarding || document.querySelector('input[name=mode]:checked')?.value === 'sheet';
   if (box.dataset.state === `${wantSheet}|${view.has_sheet}|${view.mode}|${view.sync_error}|${view.synced_at}`) return;
   box.dataset.state = `${wantSheet}|${view.has_sheet}|${view.mode}|${view.sync_error}|${view.synced_at}`;
@@ -427,19 +455,24 @@ function renderSheetBox(box, onboarding) {
         <button type="button" class="sb-connect">${connected ? 'Save & sync now' : 'Connect & sync'}</button>
         ${connected ? '<button type="button" class="ghost sb-guide">Setup guide</button><button type="button" class="ghost sb-copy">Copy script</button>' : ''}
       </div>`;
-    box.querySelector('.sb-connect').onclick = () => connectSheet(box, onboarding);
+    const wire = () => {
+      const b = box.querySelector('.sb-connect');
+      b.onclick = () => working(b, 'Connecting…', () => connectSheet(box, onboarding));
+    };
+    wire();
     const g = box.querySelector('.sb-guide');
-    if (g) g.onclick = () => { box.innerHTML = guide + fields + '<div class="row"><button type="button" class="sb-connect">Save & sync now</button></div>'; box.querySelector('.sb-connect').onclick = () => connectSheet(box, onboarding); wireCopy(box); };
+    if (g) g.onclick = () => { box.innerHTML = guide + fields + '<div class="row"><button type="button" class="sb-connect">Save & sync now</button></div>'; wire(); wireCopy(box); };
   } else {
     box.innerHTML = `<details class="import"><summary class="muted small">Import history from a Google Sheet…</summary>
       ${view.legacy_import ? '<p class="small">Narra has a copy of your sheet from before. <button type="button" class="link inline sb-legacy">Import it</button></p>' : ''}
       <p class="muted small">Or connect a sheet that has the Narra script (see the Google Sheet option for the guide) and import its days. Days already in Narra are kept.</p>
       ${fields}<div class="row"><button type="button" class="ghost sb-import">Import</button></div></details>`;
-    box.querySelector('.sb-import').onclick = async () => {
+    const imp = box.querySelector('.sb-import');
+    imp.onclick = () => working(imp, 'Importing…', async () => {
       if (await saveLink(box)) await importHistory();
-    };
+    });
     const legacy = box.querySelector('.sb-legacy');
-    if (legacy) legacy.onclick = () => importHistory(true);
+    if (legacy) legacy.onclick = () => working(legacy, 'Importing…', () => importHistory(true));
   }
   wireCopy(box);
 }
@@ -581,8 +614,9 @@ function finishOnboarding() {
   syncSheet(true);
 }
 
-$('stepProfile').onsubmit = async e => {
+$('stepProfile').onsubmit = e => {
   e.preventDefault();
+  working(e.submitter || $('stepProfile').querySelector('button[type=submit]'), 'Saving…', async () => {
   try {
     view = await invoke('set_profile', { name: $('obName').value, rate: Number($('obRate').value) || null });
     const canImport = view.legacy_import || view.has_sheet;
@@ -595,9 +629,10 @@ $('stepProfile').onsubmit = async e => {
   } catch (err) {
     toast(String(err), true);
   }
+  });
 };
 $('obBack').onclick = () => showStep('stepProfile');
-$('stepMode').onsubmit = async e => {
+$('stepMode').onsubmit = e => {
   e.preventDefault();
   const mode = document.querySelector('input[name=obMode]:checked').value;
   if (mode === 'sheet') {
@@ -605,19 +640,23 @@ $('stepMode').onsubmit = async e => {
     showStep('stepSheet');
     return;
   }
-  try {
-    if (!$('obImportRow').hidden && $('obImport').checked) await importHistory();
-    view = await invoke('set_mode', { mode: 'local' });
-    finishOnboarding();
-  } catch (err) {
-    toast(String(err), true);
-  }
+  const doImport = !$('obImportRow').hidden && $('obImport').checked;
+  working(e.submitter || $('stepMode').querySelector('button[type=submit]'), doImport ? 'Importing…' : 'Setting up…', async () => {
+    try {
+      // Use the copy of the sheet Narra already has: instant, and no calls to the sheet.
+      if (doImport) await importHistory(view.legacy_import);
+      view = await invoke('set_mode', { mode: 'local' });
+      finishOnboarding();
+    } catch (err) {
+      toast(String(err), true);
+    }
+  });
 };
 $('obSheetBack').onclick = () => showStep('stepMode');
-$('obSheetLocal').onclick = async () => {
+$('obSheetLocal').onclick = e => working(e.currentTarget, 'Setting up…', async () => {
   view = await invoke('set_mode', { mode: 'local' });
   finishOnboarding();
-};
+});
 
 // ---- Actions ----
 
@@ -753,29 +792,35 @@ $('openFolderBtn').onclick = () => invoke('open_saved', { path: null }).catch(e 
 document.querySelectorAll('input[name=dayType]').forEach(r => { r.onchange = syncEditorType; });
 $('addSession').onclick = () => addSessionRow('', '');
 $('dayCancel').onclick = () => $('dayDialog').close();
-$('dayForm').onsubmit = async e => {
+$('dayForm').onsubmit = e => {
   e.preventDefault();
-  try {
-    view = await invoke('save_day', { date: editing, day: editorDay() });
-    $('dayDialog').close();
-    toast(`Saved ${prettyDate(editing)}`);
-    renderAll();
-    renderTimesheets();
-    syncSheet(true);
-  } catch (err) {
-    toast(err.message || String(err), true);
-  }
+  working($('daySave'), 'Saving…', async () => {
+    try {
+      view = await invoke('save_day', { date: editing, day: editorDay() });
+      $('dayDialog').close();
+      toast(`Saved ${prettyDate(editing)}`);
+      justSaved = editing;
+      renderAll();
+      renderTimesheets();
+      setTimeout(() => { justSaved = null; renderTimesheets(); }, 4000);
+      syncSheet(true);
+    } catch (err) {
+      toast(err.message || String(err), true);
+    }
+  });
 };
 
-$('profileForm').onsubmit = async e => {
+$('profileForm').onsubmit = e => {
   e.preventDefault();
-  try {
-    view = await invoke('set_profile', { name: $('profileName').value, rate: Number($('profileRate').value) || null });
-    toast('Saved');
-  } catch (err) {
-    toast(String(err), true);
-  }
-  renderAll();
+  working(e.submitter || $('profileForm').querySelector('button[type=submit]'), 'Saving…', async () => {
+    try {
+      view = await invoke('set_profile', { name: $('profileName').value, rate: Number($('profileRate').value) || null });
+      toast('Saved');
+    } catch (err) {
+      toast(String(err), true);
+    }
+    renderAll();
+  });
 };
 
 document.querySelectorAll('input[name=mode]').forEach(r => {
