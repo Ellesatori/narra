@@ -41,7 +41,11 @@ function render(now = Date.now()) {
   else { pill.textContent = t.slots.length ? 'On a break' : 'Off'; pill.className = 'pill'; }
 
   $('timer').textContent = duration(t.runningMs);
-  $('sub').textContent = t.open
+  const over = overThreshold(view, t);
+  $('sub').classList.toggle('alert', over);
+  $('sub').textContent = over
+    ? `${hours(view.remind_hours).replace(/\.00$/, '')} hrs done, time out?`
+    : t.open
     ? 'since ' + fmt(t.since, { hour: 'numeric', minute: '2-digit' }, PH) + ' PH'
     : t.holiday ? '8 hrs holiday credit' : holidayToday ? holidayToday.name : 'not clocked in';
 
@@ -54,6 +58,7 @@ function render(now = Date.now()) {
   $('forgotSave').disabled = busy;
 
   $('statToday').textContent = hours(t.hours) + 'h';
+  reminderTick(invoke, view, t);
   const period = periodFor(view, t.key);
   if (period) {
     const p = periodProgress(period, t);

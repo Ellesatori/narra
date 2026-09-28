@@ -46,6 +46,18 @@ pub struct Store {
     pub widget_hidden: bool,
     /// Where the widget was last dragged to (logical px, top-left).
     pub widget_pos: Option<(f64, f64)>,
+    /// The clock-out reminder is on unless switched off.
+    pub remind_off: bool,
+    /// Hours worked in a day before the reminder fires (default 8).
+    pub remind_hours: Option<f64>,
+}
+
+pub const DEFAULT_REMIND_HOURS: f64 = 8.0;
+
+impl Store {
+    pub fn remind_hours(&self) -> f64 {
+        self.remind_hours.unwrap_or(DEFAULT_REMIND_HOURS)
+    }
 }
 
 impl Store {

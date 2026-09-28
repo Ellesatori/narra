@@ -63,6 +63,7 @@ header { display: flex; justify-content: space-between; align-items: center; }
 .main { flex: 1; display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 0; }
 .timer { font-size: 34px; font-weight: 700; letter-spacing: -.02em; font-variant-numeric: tabular-nums; line-height: 1.05; }
 .sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+.sub.alert { color: var(--gold); font-weight: 600; }
 
 .actions { display: flex; flex-direction: column; align-items: center; gap: 4px; }
 .punch {

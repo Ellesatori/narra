@@ -74,6 +74,7 @@ function renderToday(now = Date.now()) {
   $('forgotSave').disabled = btn.disabled;
 
   let note = `Today ${hours(t.hours)} hrs`;
+  if (overThreshold(view, t)) note = `You've passed ${hours(view.remind_hours).replace(/\.00$/, '')} hrs today. Time out when you're done.`;
   if (t.holiday) note = holidayArmed ? 'Clocking in replaces the 8-hour holiday credit with your actual hours.' : '8.00 hrs credited on the sheet';
   $('heroNote').textContent = note;
 
@@ -97,6 +98,7 @@ function renderToday(now = Date.now()) {
 
   renderStats(t);
   updateTray(t);
+  reminderTick(invoke, view, t);
 }
 
 function renderStats(t) {
@@ -273,6 +275,9 @@ function renderSettings() {
   $('apiKey').placeholder = view.configured ? 'Saved — paste a new key to replace it' : 'Paste the key from 🌼 Narra → Desktop app key…';
   $('autostart').checked = !!view.autostart;
   $('widgetToggle').checked = !!view.widget;
+  $('remindToggle').checked = !!view.remind;
+  if (document.activeElement !== $('remindHours')) $('remindHours').value = view.remind_hours;
+  $('remindHours').disabled = !view.remind;
 }
 
 function renderAll() {
@@ -453,6 +458,21 @@ $('widgetToggle').onchange = async e => {
   }
   renderSettings();
 };
+
+async function saveReminder() {
+  const h = Number($('remindHours').value);
+  try {
+    view = await invoke('set_reminder', { enabled: $('remindToggle').checked, hours: h });
+  } catch (err) {
+    toast(String(err), true);
+  }
+  renderSettings();
+}
+$('remindToggle').onchange = saveReminder;
+$('remindHours').onchange = saveReminder;
+$('testReminder').onclick = () =>
+  invoke('test_reminder').then(() => toast('Sent. If nothing appeared, allow Narra in System Settings → Notifications.'))
+    .catch(err => toast(String(err), true));
 
 listen('tray-punch', () => punch());
 listen('navigate', e => showView(e.payload));

@@ -39,6 +39,8 @@ After changing `Code.gs`: paste it into the Apps Script editor, save, then
   then reset with new dates, "--" weekends, and restored TOTAL HOURS formulas.
 - Weekday PH holidays (Nager.Date + your additions − ones you switch off) get
   "Holiday" in the time cells and 8 in TOTAL HOURS. Clocking in on a holiday replaces that.
+- Clock-out reminder: macOS notification once today passes the threshold (default 8 h, Settings),
+  then every 30 min while still clocked in. Both windows report ticks; the backend dedupes.
 - Desktop widget (`ui/widget.*`): frameless HUD-glass window, always below other windows,
   on every Space. Drag it anywhere; its position is saved in store.json (`widget_pos`).
   Toggle it from the menu-bar icon → Desktop Widget, or Settings.

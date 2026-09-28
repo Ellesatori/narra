@@ -19,6 +19,7 @@ use tauri::tray::TrayIconBuilder;
 use tauri::window::{Effect, EffectState, EffectsBuilder};
 use tauri::{AppHandle, Emitter, Manager, RunEvent, WebviewUrl, WebviewWindowBuilder, WindowEvent, Wry};
 use tauri_plugin_autostart::{MacosLauncher, ManagerExt};
+use tauri_plugin_notification::NotificationExt;
 use tauri_plugin_opener::OpenerExt;
 
 const HOLIDAY_REFRESH_MS: i64 = 7 * 24 * 60 * 60 * 1000;
@@ -26,12 +27,17 @@ const TRAY_ID: &str = "clock";
 const WIDGET: &str = "widget";
 /// Same footprint as a medium macOS widget.
 const WIDGET_SIZE: (f64, f64) = (344.0, 164.0);
+/// After the first clock-out reminder, repeat every half hour while still clocked in.
+const REMIND_EVERY_HOURS: f64 = 0.5;
 
 struct AppState {
     path: PathBuf,
     store: Mutex<Store>,
     /// Serialises queue flushes / syncs so a punch is never sent twice.
     net: Mutex<()>,
+    /// Last clock-out reminder sent: (Eastern date, half-hour step past the threshold).
+    /// Both windows report ticks; this keeps each reminder to one notification.
+    reminded: Mutex<Option<(String, i64)>>,
 }
 
 struct TrayItems {
@@ -48,6 +54,8 @@ struct View {
     queue: Vec<Punch>,
     autostart: bool,
     widget: bool,
+    remind: bool,
+    remind_hours: f64,
 }
 
 #[derive(Serialize)]
@@ -78,6 +86,8 @@ fn view(app: &AppHandle) -> View {
         queue: store.queue.clone(),
         autostart: app.autolaunch().is_enabled().unwrap_or(false),
         widget: !store.widget_hidden,
+        remind: !store.remind_off,
+        remind_hours: store.remind_hours(),
     }
 }
 
@@ -318,6 +328,67 @@ fn set_tray(app: AppHandle, title: String, clocked_in: bool) -> Result<(), Strin
         .map_err(|e| e.to_string())
 }
 
+fn notify(app: &AppHandle, title: &str, body: &str) -> Result<(), String> {
+    app.notification()
+        .builder()
+        .title(title)
+        .body(body)
+        .show()
+        .map_err(|e| e.to_string())
+}
+
+/// Called by the windows every ~30s with today's live numbers. Sends the clock-out
+/// reminder once the day passes the threshold, then every half hour until Time Out.
+#[tauri::command]
+fn reminder_tick(app: AppHandle, date: String, open: bool, hours: f64) -> Result<(), String> {
+    let state = app.state::<AppState>();
+    let threshold = {
+        let store = state.store.lock().unwrap();
+        if store.remind_off {
+            return Ok(());
+        }
+        store.remind_hours()
+    };
+    if !open || hours < threshold {
+        return Ok(());
+    }
+    let step = ((hours - threshold) / REMIND_EVERY_HOURS).floor() as i64;
+    {
+        let mut reminded = state.reminded.lock().unwrap();
+        if matches!(&*reminded, Some((d, s)) if *d == date && *s >= step) {
+            return Ok(());
+        }
+        *reminded = Some((date, step));
+    }
+    let worked = format!("{:.1}", hours);
+    if step == 0 {
+        notify(&app, "Time to time out?", &format!("You've worked {worked} hours today. Don't forget to time out in Narra."))
+    } else {
+        notify(&app, "Still clocked in", &format!("{worked} hours today and counting. Time out in Narra when you're done."))
+    }
+}
+
+#[tauri::command]
+fn set_reminder(app: AppHandle, enabled: bool, hours: f64) -> Result<View, String> {
+    if !(0.5..=24.0).contains(&hours) {
+        return Err("Pick between 0.5 and 24 hours.".into());
+    }
+    update_store(&app, |s| {
+        s.remind_off = !enabled;
+        s.remind_hours = Some(hours);
+    })?;
+    // A new threshold starts the reminders fresh.
+    *app.state::<AppState>().reminded.lock().unwrap() = None;
+    let view = view(&app);
+    broadcast(&app, &view);
+    Ok(view)
+}
+
+#[tauri::command]
+fn test_reminder(app: AppHandle) -> Result<(), String> {
+    notify(&app, "Time to time out?", "This is how Narra will remind you when your day is done.")
+}
+
 /// Bring up the main window, optionally on a given page ("settings", "timesheets", …).
 #[tauri::command]
 fn show_main_view(app: AppHandle, view: Option<String>) {
@@ -410,10 +481,16 @@ fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| show_main(app)))
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_autostart::init(MacosLauncher::LaunchAgent, Some(vec!["--hidden"])))
         .setup(|app| {
             let path = app.path().app_data_dir()?.join("store.json");
-            app.manage(AppState { store: Mutex::new(Store::load(&path)), path, net: Mutex::new(()) });
+            app.manage(AppState {
+                store: Mutex::new(Store::load(&path)),
+                path,
+                net: Mutex::new(()),
+                reminded: Mutex::new(None),
+            });
 
             let punch = MenuItem::with_id(app, "punch", "Time In", true, None::<&str>)?;
             let show = MenuItem::with_id(app, "show", "Open Narra", true, None::<&str>)?;
@@ -481,7 +558,10 @@ fn main() {
             open_url,
             set_tray,
             set_widget,
-            show_main_view
+            show_main_view,
+            reminder_tick,
+            set_reminder,
+            test_reminder
         ])
         .build(tauri::generate_context!())
         .expect("error while building Narra")

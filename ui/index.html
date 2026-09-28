@@ -157,6 +157,10 @@
       <div class="card form">
         <h2>App</h2>
         <label class="toggle"><input type="checkbox" id="widgetToggle"> Show the desktop widget (drag it anywhere on your desktop)</label>
+        <label class="toggle"><input type="checkbox" id="remindToggle"> Remind me to time out after
+          <input type="number" id="remindHours" min="0.5" max="24" step="0.5" class="inline-num"> hours of work in a day</label>
+        <p class="muted small indent">Sends a notification, then every 30 minutes until you time out.
+          <button type="button" class="link inline" id="testReminder">Send a test reminder</button></p>
         <label class="toggle"><input type="checkbox" id="autostart"> Open Narra when I log in (starts in the menu bar)</label>
         <div class="row">
           <button type="button" class="ghost" id="syncNow">Sync now</button>

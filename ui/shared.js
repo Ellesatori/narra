@@ -107,6 +107,19 @@ function periodProgress(period, t) {
   };
 }
 
+/** Past the clock-out reminder threshold while still clocked in. */
+function overThreshold(view, t) {
+  return !!(view && view.remind && t.open && t.hours >= view.remind_hours);
+}
+
+let lastReminderTick = 0;
+/** Report today's numbers to the backend, which decides when to notify (and dedupes across windows). */
+function reminderTick(invoke, view, t) {
+  if (!view || !view.configured || Date.now() - lastReminderTick < 30 * 1000) return;
+  lastReminderTick = Date.now();
+  invoke('reminder_tick', { date: t.key, open: t.open, hours: t.hours }).catch(() => {});
+}
+
 /** Next enabled holiday on or after `key` that falls on a weekday (the ones that count). */
 function nextWeekdayHoliday(lists, key) {
   return lists.flat()
