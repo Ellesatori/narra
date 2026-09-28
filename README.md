@@ -32,6 +32,12 @@ After changing `Code.gs`: paste it into the Apps Script editor, save, then
 
 ## Behaviour
 
+- Expected pay is computed in the app with the template's formula: `rate / 2 + 1.3 × (rate / 160) × overtime`,
+  overtime = hours beyond 8 × weekdays in the period. Each person sets their monthly rate in
+  Settings (falls back to the rate typed in their sheet).
+- The sheet script works on the spreadsheet it's bound to, so colleagues can use
+  *File → Make a copy* of the template, deploy their copy, and paste its URL + key into Narra.
+
 - Times are Eastern (the template asks for it). Each day has 2 slots (before/after lunch).
 - Punches are stored locally first (`~/Library/Application Support/com.renz.narra/store.json`)
   and sent in order; offline punches keep their original time.

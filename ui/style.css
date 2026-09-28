@@ -69,7 +69,7 @@ button.ghost:hover { background: var(--accent-soft); }
 button:disabled { opacity: .5; cursor: default; }
 button.icon { padding: 4px 10px; font-size: 16px; line-height: 1; }
 
-input[type=text], input[type=url], input[type=password], input[type=date], input[type=time] {
+input[type=text], input[type=url], input[type=password], input[type=date], input[type=time], input[type=number]:not(.inline-num) {
   font: inherit;
   color: var(--ink);
   background: var(--bg);

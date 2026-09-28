@@ -6,6 +6,14 @@ const ET = 'America/New_York';
 const PH = 'Asia/Manila';
 const HOUR_MS = 3600 * 1000;
 
+// Pay rules, copied from the timesheet template's formulas:
+//   required  = 8 h × weekdays (Mon–Fri) in the period          (NETWORKDAYS)
+//   overtime  = max(0, total − required); regular = min(total, required)
+//   pay       = rate / 2 + OVERTIME_MULTIPLIER × (rate / HOURS_PER_MONTH) × overtime
+const HOURS_PER_DAY = 8;
+const HOURS_PER_MONTH = 160;
+const OVERTIME_MULTIPLIER = 1.3;
+
 const $ = id => document.getElementById(id);
 
 // ---- Time helpers (everything on the sheet is Eastern) ----
@@ -105,6 +113,42 @@ function periodProgress(period, t) {
     expectedToDate: weekdays.filter(d => d.date <= t.key).length * 8,
     expectedTotal: weekdays.length * 8,
   };
+}
+
+const money = n => '$' + n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const parseMoney = text => {
+  const n = Number(String(text || '').replace(/[^0-9.]/g, ''));
+  return n > 0 ? n : null;
+};
+
+/** The monthly rate set in Narra's Settings, else the one typed in the timesheet. */
+function monthlyRate(view) {
+  if (view && view.monthly_rate > 0) return view.monthly_rate;
+  for (const tab of timesheetsOf(view)) {
+    const rate = parseMoney(tab.summary && tab.summary.monthlyRate);
+    if (rate) return rate;
+  }
+  return null;
+}
+
+/** Expected pay for a period with `total` hours logged, using the template's formula. */
+function payFor(period, total, rate) {
+  const required = HOURS_PER_DAY * period.days.filter(d => !d.weekend).length;
+  const overtime = Math.max(0, total - required);
+  const otRate = rate ? OVERTIME_MULTIPLIER * (rate / HOURS_PER_MONTH) : null;
+  return {
+    required,
+    regular: Math.min(total, required),
+    overtime,
+    otRate,
+    pay: rate ? rate / 2 + otRate * overtime : null,
+  };
+}
+
+/** Link to the connected spreadsheet (from the last sync), without the /edit suffix. */
+function sheetUrl(view) {
+  const url = view && view.snapshot && view.snapshot.sheetUrl;
+  return url ? url.replace(/\/edit.*$/, '') : SHEET_URL;
 }
 
 /** Past the clock-out reminder threshold while still clocked in. */

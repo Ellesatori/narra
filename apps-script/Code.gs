@@ -9,6 +9,8 @@
  * holds an older period is backed up to a hidden tab and reset for the new one.
  */
 
+// Fallback only: the script works on the spreadsheet it's attached to, so a copy of the
+// template (File → Make a copy) brings a script that already points at the copy.
 const SHEET_ID = '14sMZgxOqTE2QahXwPJ31bG45JuFf5v6qKJLrIKhUy0c';
 const TZ = 'America/New_York';
 const FIRST_ROW = 5;
@@ -90,13 +92,18 @@ function doPost(e) {
   }
 }
 
+/** The spreadsheet this script is bound to. */
+function book_() {
+  return SpreadsheetApp.getActiveSpreadsheet() || SpreadsheetApp.openById(SHEET_ID);
+}
+
 function json_(obj) {
   return ContentService.createTextOutput(JSON.stringify(obj)).setMimeType(ContentService.MimeType.JSON);
 }
 
 /** Roll today's tab forward if needed, mark holidays, and return everything the app shows. */
 function sync_(holidays) {
-  const ss = SpreadsheetApp.openById(SHEET_ID);
+  const ss = book_();
   const now = new Date();
   const notes = [];
   const ctx = ctx_(now);
@@ -105,14 +112,14 @@ function sync_(holidays) {
   if (note) notes.push(note);
   applyHolidays_(ss, holidays);
   SpreadsheetApp.flush();
-  return { notes, status: status_(now), timesheets: timesheets_(ss) };
+  return { notes, status: status_(now), timesheets: timesheets_(ss), sheetUrl: ss.getUrl() };
 }
 
 // ---- Punching ----
 
 function punch_(kind, at) {
   if (isNaN(at.getTime())) throw new Error('Bad timestamp');
-  const ss = SpreadsheetApp.openById(SHEET_ID);
+  const ss = book_();
   const ctx = ctx_(at);
   const sheet = tabFor_(ss, ctx);
   const note = ensurePeriod_(ss, sheet, ctx);
@@ -144,7 +151,7 @@ function punch_(kind, at) {
 }
 
 function status_(now) {
-  const ss = SpreadsheetApp.openById(SHEET_ID);
+  const ss = book_();
   const ctx = ctx_(now);
   const sheet = tabFor_(ss, ctx);
   const row = rowFor_(sheet, ctx);

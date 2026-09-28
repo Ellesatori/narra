@@ -136,9 +136,14 @@ function renderStats(t) {
   $('statPeriodHint').innerHTML =
     `of ${expectedTotal} hrs · ${diff >= 0 ? '+' : ''}${hours(diff)} vs pace` +
     `<div class="meter"><span style="width:${Math.min(100, (logged / expectedTotal) * 100)}%"></span></div>`;
-  const s = period.summary || {};
-  $('statPay').textContent = s.expectedPay || '—';
-  $('statPayHint').textContent = s.overtime && s.overtime !== '0.00' ? `incl. ${s.overtime} hrs overtime` : `${s.regularHours || '0.00'} regular hrs`;
+  const rate = monthlyRate(view);
+  const p = payFor(period, logged, rate);
+  $('statPay').textContent = rate ? money(p.pay) : '—';
+  $('statPayHint').textContent = !rate
+    ? 'Set your monthly rate in Settings'
+    : p.overtime > 0
+    ? `incl. ${hours(p.overtime)} OT hrs × ${money(p.otRate)}`
+    : `${hours(p.regular)} of ${p.required} regular hrs`;
   renderChart(period, t);
 }
 
@@ -223,18 +228,22 @@ function renderTimesheets() {
   const tab = tabs.find(t => t.name === selectedTab);
   $('sheetTitle').textContent = tab.period || tab.name;
   $('sheetSub').textContent = tab.hidden ? `Archived copy · tab “${tab.name}”` : `Tab ${tab.name}`;
-  $('openSheetBtn').onclick = () => openUrl(`${SHEET_URL}/edit#gid=${tab.gid}`);
-  $('pdfBtn').onclick = () => openUrl(`${SHEET_URL}/export?format=pdf&gid=${tab.gid}&portrait=true&fitw=true&gridlines=false&size=letter`);
+  $('openSheetBtn').onclick = () => openUrl(`${sheetUrl(view)}/edit#gid=${tab.gid}`);
+  $('pdfBtn').onclick = () => openUrl(`${sheetUrl(view)}/export?format=pdf&gid=${tab.gid}&portrait=true&fitw=true&gridlines=false&size=letter`);
 
-  const s = tab.summary || {};
+  // The current period counts today live; past periods use the sheet's day totals.
+  const live = currentPeriod(key) === tab;
+  const total = live ? periodProgress(tab, today()).logged : tab.days.reduce((sum, d) => sum + d.hours, 0);
+  const rate = monthlyRate(view);
+  const p = payFor(tab, total, rate);
   const worked = tab.days.filter(d => d.hours > 0 && !d.holiday).length;
   const holidays = tab.days.filter(d => d.holiday).length;
   $('sheetSummary').innerHTML = [
-    ['Total hours', s.totalHours || '0.00'],
-    ['Regular', s.regularHours || '—'],
-    ['Overtime', s.overtime || '—'],
+    ['Total hours', hours(total)],
+    ['Regular', `${hours(p.regular)} / ${p.required}`],
+    ['Overtime', hours(p.overtime)],
     ['Days worked', `${worked}${holidays ? ` + ${holidays} hol.` : ''}`],
-    ['Expected pay', s.expectedPay || '—'],
+    ['Expected pay', rate ? money(p.pay) : '—'],
   ].map(([label, value]) => `<div><div class="label">${label}</div><div class="value">${value}</div></div>`).join('');
 
   const rows = $('sheetRows');
@@ -275,6 +284,9 @@ function renderSettings() {
   $('apiKey').placeholder = view.configured ? 'Saved — paste a new key to replace it' : 'Paste the key from 🌼 Narra → Desktop app key…';
   $('autostart').checked = !!view.autostart;
   $('widgetToggle').checked = !!view.widget;
+  if (document.activeElement !== $('monthlyRate')) $('monthlyRate').value = view.monthly_rate || '';
+  const sheetRate = timesheets().map(t => parseMoney(t.summary && t.summary.monthlyRate)).find(Boolean);
+  $('monthlyRate').placeholder = sheetRate ? `${sheetRate} (from your sheet)` : 'e.g. 1600';
   $('remindToggle').checked = !!view.remind;
   if (document.activeElement !== $('remindHours')) $('remindHours').value = view.remind_hours;
   $('remindHours').disabled = !view.remind;
@@ -411,7 +423,7 @@ $('forgotBtn').onclick = () => toggleForgot(true);
 $('forgotCancel').onclick = () => toggleForgot(false);
 $('forgotForm').onsubmit = e => { e.preventDefault(); punchAt($('forgotTime').value); };
 $('syncNow').onclick = () => sync(false);
-$('openSheetLink').onclick = () => openUrl(SHEET_URL + '/edit');
+$('openSheetLink').onclick = () => openUrl(sheetUrl(view) + '/edit');
 $('yearPrev').onclick = () => { holidayYear--; renderHolidays(); };
 $('yearNext').onclick = () => { holidayYear++; renderHolidays(); };
 
@@ -457,6 +469,16 @@ $('widgetToggle').onchange = async e => {
     toast(String(err), true);
   }
   renderSettings();
+};
+
+$('monthlyRate').onchange = async () => {
+  const raw = $('monthlyRate').value.trim();
+  try {
+    view = await invoke('set_rate', { rate: raw === '' ? null : Number(raw) });
+  } catch (err) {
+    toast(String(err), true);
+  }
+  renderAll();
 };
 
 async function saveReminder() {

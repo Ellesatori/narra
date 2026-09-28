@@ -56,6 +56,7 @@ struct View {
     widget: bool,
     remind: bool,
     remind_hours: f64,
+    monthly_rate: Option<f64>,
 }
 
 #[derive(Serialize)]
@@ -88,6 +89,7 @@ fn view(app: &AppHandle) -> View {
         widget: !store.widget_hidden,
         remind: !store.remind_off,
         remind_hours: store.remind_hours(),
+        monthly_rate: store.monthly_rate,
     }
 }
 
@@ -385,6 +387,19 @@ fn set_reminder(app: AppHandle, enabled: bool, hours: f64) -> Result<View, Strin
 }
 
 #[tauri::command]
+fn set_rate(app: AppHandle, rate: Option<f64>) -> Result<View, String> {
+    if let Some(r) = rate {
+        if !(r > 0.0 && r < 10_000_000.0) {
+            return Err("Enter your monthly rate as a positive number, e.g. 1600.".into());
+        }
+    }
+    update_store(&app, |s| s.monthly_rate = rate)?;
+    let view = view(&app);
+    broadcast(&app, &view);
+    Ok(view)
+}
+
+#[tauri::command]
 fn test_reminder(app: AppHandle) -> Result<(), String> {
     notify(&app, "Time to time out?", "This is how Narra will remind you when your day is done.")
 }
@@ -561,6 +576,7 @@ fn main() {
             show_main_view,
             reminder_tick,
             set_reminder,
+            set_rate,
             test_reminder
         ])
         .build(tauri::generate_context!())

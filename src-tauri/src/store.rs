@@ -50,6 +50,8 @@ pub struct Store {
     pub remind_off: bool,
     /// Hours worked in a day before the reminder fires (default 8).
     pub remind_hours: Option<f64>,
+    /// Monthly rate for the expected-pay estimate; None = use the one in the sheet.
+    pub monthly_rate: Option<f64>,
 }
 
 pub const DEFAULT_REMIND_HOURS: f64 = 8.0;
