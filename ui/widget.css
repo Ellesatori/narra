@@ -6,9 +6,26 @@
   --muted: rgba(255, 255, 255, .58);
   --faint: rgba(255, 255, 255, .12);
   --go: #4cc76a;
-  --stop: #ff5f57;
+  --stop: #ee7d75;
   --gold: #f6b93b;
+  /* Text-safe versions of the accents; same as the accents on dark glass. */
+  --go-ink: var(--go);
+  --gold-ink: var(--gold);
   color-scheme: dark;
+}
+
+/* Light mode: the HUD glass turns pale and takes on the wallpaper's colour, so white text
+   washes out. The text goes dark instead, like macOS widgets, with the small text and
+   accents deep enough to hold their contrast on mid-tone glass. */
+@media (prefers-color-scheme: light) {
+  :root {
+    --ink: #1b261b;
+    --muted: rgba(0, 0, 0, .65);
+    --faint: rgba(0, 0, 0, .1);
+    --go-ink: #0f4d1f;
+    --gold-ink: #5f3b00;
+    color-scheme: light;
+  }
 }
 
 * { box-sizing: border-box; }
@@ -53,14 +70,14 @@ header { display: flex; justify-content: space-between; align-items: center; }
   background: var(--faint);
   color: var(--muted);
 }
-.pill.on { background: rgba(76, 199, 106, .2); color: var(--go); }
-.pill.holiday { background: rgba(246, 185, 59, .2); color: var(--gold); }
-.pill.warn { background: rgba(246, 185, 59, .2); color: var(--gold); }
+.pill.on { background: rgba(76, 199, 106, .2); color: var(--go-ink); }
+.pill.holiday { background: rgba(246, 185, 59, .2); color: var(--gold-ink); }
+.pill.warn { background: rgba(246, 185, 59, .2); color: var(--gold-ink); }
 
 .main { flex: 1; display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 0; }
 .timer { font-size: 34px; font-weight: 700; letter-spacing: -.02em; font-variant-numeric: tabular-nums; line-height: 1.05; }
 .sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
-.sub.alert { color: var(--gold); font-weight: 600; }
+.sub.alert { color: var(--gold-ink); font-weight: 600; }
 
 .actions { display: flex; flex-direction: column; align-items: center; gap: 4px; }
 .punch {
@@ -95,7 +112,7 @@ header { display: flex; justify-content: space-between; align-items: center; }
   padding: 6px 8px;
   user-select: text;
 }
-.forgot input:focus { outline: 2px solid var(--gold); outline-offset: -2px; }
+.forgot input:focus { outline: 2px solid var(--gold-ink); outline-offset: -2px; }
 .ghost { width: 28px; height: 28px; border-radius: 99px; background: var(--faint); color: var(--muted); }
 
 .setup { flex-direction: column; align-items: flex-start; justify-content: center; gap: 8px; }
@@ -115,6 +132,7 @@ footer { display: flex; gap: 6px; border-top: 1px solid var(--faint); padding-to
   padding: 7px 10px;
   border-radius: 10px;
   background: rgba(20, 20, 20, .92);
+  color: #fff; /* stays a dark toast in light mode too */
   font-size: 12px;
   line-height: 1.3;
 }
