@@ -103,6 +103,16 @@ header { display: flex; justify-content: space-between; align-items: center; }
 .forgot-link:hover { color: var(--ink); }
 
 .forgot { flex-direction: column; align-items: stretch; justify-content: center; gap: 6px; }
+
+/* The note strip eases in when the note button opens it: a short fade with a slight rise. */
+#notePane:not([hidden]) { animation: pane-in .22s cubic-bezier(.2, .8, .2, 1); }
+@keyframes pane-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  @keyframes pane-in { from { opacity: 0; } to { opacity: 1; } }
+}
 .forgot label { font-size: 12px; font-weight: 600; color: var(--muted); }
 .forgot .row { display: flex; gap: 6px; align-items: center; }
 .forgot input {
