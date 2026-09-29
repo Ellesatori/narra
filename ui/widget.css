@@ -7,10 +7,9 @@
   --faint: rgba(255, 255, 255, .12);
   --go: #4cc76a;
   --stop: #ee7d75;
-  --gold: #f6b93b;
   /* Text-safe versions of the accents; same as the accents on dark glass. */
   --go-ink: var(--go);
-  --gold-ink: var(--gold);
+  --gold-ink: #f6b93b;
   color-scheme: dark;
 }
 
@@ -63,7 +62,6 @@ header { display: flex; justify-content: space-between; align-items: center; }
 .brand:hover { opacity: .8; }
 .head-right { display: flex; align-items: center; gap: 6px; }
 .note-btn { display: inline-flex; padding: 3px; border-radius: 6px; color: var(--muted); }
-.note-btn svg { fill: none; stroke: currentColor; stroke-width: 1.3; stroke-linecap: round; stroke-linejoin: round; }
 .note-btn:hover { color: var(--ink); background: var(--faint); }
 .note-btn.has-note { color: var(--ink); }
 .note-btn.has-note svg path:first-child { fill: currentColor; fill-opacity: .2; }
@@ -77,8 +75,7 @@ header { display: flex; justify-content: space-between; align-items: center; }
   color: var(--muted);
 }
 .pill.on { background: rgba(76, 199, 106, .2); color: var(--go-ink); }
-.pill.holiday { background: rgba(246, 185, 59, .2); color: var(--gold-ink); }
-.pill.warn { background: rgba(246, 185, 59, .2); color: var(--gold-ink); }
+.pill.holiday, .pill.warn { background: rgba(246, 185, 59, .2); color: var(--gold-ink); }
 
 .main { flex: 1; display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 0; }
 .timer { font-size: 34px; font-weight: 700; letter-spacing: -.02em; font-variant-numeric: tabular-nums; line-height: 1.05; }

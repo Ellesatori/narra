@@ -255,9 +255,9 @@ function nextWeekdayHoliday(lists, key) {
     .sort((a, b) => a.date.localeCompare(b.date))[0];
 }
 
-/** Timing out now would land in the minute the session started, so nothing gets logged. */
-function stoppingInStartMinute(t) {
-  return t.open && Math.floor(Date.now() / 60000) * 60000 <= t.since;
+/** Sessions across all days; a Time Out that lowers it dropped a same-minute session. */
+function sessionCount(view) {
+  return Object.values(view.days).reduce((n, d) => n + d.sessions.length, 0);
 }
 
 /** A day's private note ('' when none). Notes never go into the PDF or the sheet. */
@@ -270,8 +270,9 @@ function saveNote(invoke, date, text) {
   return invoke('save_note', { date, text });
 }
 
-/** Sticky-note icon for note buttons (stroked; fill the first path to mark "has a note"). */
-const NOTE_ICON = '<svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true">' +
+/** Sticky-note icon for note buttons (fill the first path to mark "has a note"). */
+const NOTE_ICON = '<svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true" fill="none" ' +
+  'stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round">' +
   '<path d="M3 2.5h10a.5.5 0 0 1 .5.5v6.8L9.8 13.5H3a.5.5 0 0 1-.5-.5V3a.5.5 0 0 1 .5-.5Z"/>' +
   '<path d="M9.5 13.5V10h4"/><path d="M5 5.5h6M5 8h4"/></svg>';
 

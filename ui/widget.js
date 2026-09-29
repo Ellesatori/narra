@@ -10,6 +10,7 @@ let holidays = [];           // [[...this year], [...next year]]
 let busy = false;
 let holidayArmed = false;
 let flashTimer = null;
+let pane = null;             // overlay replacing the main pane: 'forgot' | 'note' | null
 
 function flash(text, isError = false) {
   const el = $('flash');
@@ -23,11 +24,11 @@ function flash(text, isError = false) {
 function render(now = Date.now()) {
   if (!view) return;
   const ready = !!view.mode;
-  const forgotOpen = !$('forgotPane').hidden;
-  const noteOpen = !$('notePane').hidden;
+  if (!ready) pane = null;
   $('setupPane').hidden = ready;
-  $('mainPane').hidden = !ready || forgotOpen || noteOpen;
-  if (!ready) { $('forgotPane').hidden = true; $('notePane').hidden = true; }
+  $('mainPane').hidden = !ready || pane !== null;
+  $('forgotPane').hidden = pane !== 'forgot';
+  $('notePane').hidden = pane !== 'note';
 
   const t = todayState(view, holidayMap(holidays), now);
   const note = noteFor(view, t.key);
@@ -91,14 +92,14 @@ async function punch(at = null) {
     return;
   }
   holidayArmed = false;
-  const dropping = at === null && stoppingInStartMinute(t);
+  const sessions = sessionCount(view);
   busy = true;
   render();
   try {
     view = await punchNow(invoke, t, at);
     const now = todayState(view, holidayMap(holidays));
     flash(now.open ? `Timed in at ${clock(now.since, PH)} Manila`
-      : dropping ? 'Stopped within a minute · nothing logged'
+      : sessionCount(view) < sessions ? 'Stopped within a minute · nothing logged'
       : `Timed out · ${hours(now.hours)} hrs today`);
   } catch (e) {
     flash(String(e), true);
@@ -108,24 +109,17 @@ async function punch(at = null) {
   }
 }
 
-function showForgot(open) {
-  if (open) $('notePane').hidden = true;
-  $('forgotPane').hidden = !open;
-  if (open) {
+/** Open an overlay pane ('forgot' / 'note') in place of the main pane, or close it (null). */
+function showPane(name) {
+  pane = name;
+  render();
+  if (name === 'forgot') {
     $('forgotTime').value = nowHHMM();
     $('forgotTime').focus();
-  }
-  render();
-}
-
-function showNote(open) {
-  if (open) $('forgotPane').hidden = true;
-  $('notePane').hidden = !open;
-  if (open) {
-    $('noteInput').value = noteFor(view, todayState(view, holidayMap(holidays)).key);
+  } else if (name === 'note') {
+    $('noteInput').value = noteFor(view, dateKey(Date.now()));
     $('noteInput').focus();
   }
-  render();
 }
 
 async function loadHolidays() {
@@ -143,26 +137,27 @@ async function refresh() {
 }
 
 $('punchBtn').onclick = () => punch();
-$('forgotBtn').onclick = () => showForgot(true);
-$('forgotCancel').onclick = () => showForgot(false);
+$('forgotBtn').onclick = () => showPane('forgot');
+$('forgotCancel').onclick = () => showPane(null);
 $('forgotPane').onsubmit = e => {
   e.preventDefault();
   const at = pickedTime($('forgotTime').value);
-  showForgot(false);
+  showPane(null);
   punch(at);
 };
 $('noteBtn').innerHTML = NOTE_ICON;
-$('noteBtn').onclick = () => showNote($('notePane').hidden);
-$('noteCancel').onclick = () => showNote(false);
-$('noteInput').addEventListener('keydown', e => { if (e.key === 'Escape') showNote(false); });
+$('noteBtn').onclick = () => showPane(pane === 'note' ? null : 'note');
+$('noteCancel').onclick = () => showPane(null);
+$('noteInput').addEventListener('keydown', e => { if (e.key === 'Escape') showPane(null); });
 $('notePane').onsubmit = async e => {
   e.preventDefault();
-  const key = todayState(view, holidayMap(holidays)).key;
-  const text = $('noteInput').value;
+  const key = dateKey(Date.now());
+  const text = $('noteInput').value.trim();
+  if (text === noteFor(view, key)) { showPane(null); return; }
   try {
     view = await saveNote(invoke, key, text);
-    showNote(false);
-    flash(text.trim() ? 'Note saved' : 'Note removed');
+    showPane(null);
+    flash(text ? 'Note saved' : 'Note removed');
   } catch (err) {
     flash(String(err), true);
   }

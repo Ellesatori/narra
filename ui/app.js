@@ -135,9 +135,11 @@ function renderToday(now = Date.now()) {
   }
   $('heroNote').textContent = note;
 
+  // Only touch the box when the note changed: fitNote forces a layout.
   const noteBox = $('todayNote');
-  if (!noteEditing) {
-    noteBox.value = noteFor(view, t.key);
+  const saved = noteFor(view, t.key);
+  if (!noteEditing && noteBox.value !== saved) {
+    noteBox.value = saved;
     fitNote(noteBox);
   }
 
@@ -720,11 +722,9 @@ function setNoteEditing(on) {
 }
 
 function cancelTodayNote() {
-  const box = $('todayNote');
-  box.value = noteFor(view, today().key);
-  fitNote(box);
   setNoteEditing(false);
-  box.blur();
+  $('todayNote').blur();
+  renderToday();
 }
 
 let noteSavedTimer = null;
@@ -736,12 +736,11 @@ async function saveTodayNote() {
     if (text !== noteFor(view, key)) view = await saveNote(invoke, key, text);
     setNoteEditing(false);
     box.blur();
-    renderToday();
+    renderAll();
     const tag = $('todayNoteSaved');
     tag.hidden = false;
     clearTimeout(noteSavedTimer);
     noteSavedTimer = setTimeout(() => { tag.hidden = true; }, 2000);
-    if (!$('view-timesheets').hidden) renderTimesheets();
   } catch (e) {
     toast(String(e), true); // still editing, so what they typed stays
   }
@@ -820,13 +819,13 @@ async function punch(at = null) {
     return;
   }
   holidayArmed = false;
-  const dropping = at === null && stoppingInStartMinute(t);
+  const sessions = sessionCount(view);
   busy = true;
   try {
     view = await punchNow(invoke, t, at);
     const now = today();
     toast(now.open ? `Timed in at ${clock(now.since, PH)} Manila (${clock(now.since)} New York)`
-      : dropping ? 'Stopped within a minute, so nothing was logged.'
+      : sessionCount(view) < sessions ? 'Stopped within a minute, so nothing was logged.'
       : `Timed out. ${hours(now.hours)} hrs today.`);
   } catch (e) {
     toast(String(e), true);

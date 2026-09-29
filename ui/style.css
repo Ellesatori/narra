@@ -83,7 +83,7 @@ button.busy::before {
 @keyframes spin { to { transform: rotate(360deg); } }
 button.icon { padding: 4px 10px; font-size: 16px; line-height: 1; }
 
-input[type=text], input[type=url], input[type=password], input[type=date], input[type=time], input[type=number]:not(.inline-num) {
+input[type=text], input[type=url], input[type=password], input[type=date], input[type=time], input[type=number]:not(.inline-num), textarea {
   font: inherit;
   color: var(--ink);
   background: var(--bg);
@@ -93,7 +93,9 @@ input[type=text], input[type=url], input[type=password], input[type=date], input
   width: 100%;
   user-select: text;
 }
-input:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+input:focus, textarea:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+textarea { display: block; font-size: 14px; resize: none; }
+textarea::placeholder { color: var(--muted); opacity: 1; }
 
 /* Sidebar */
 .side {
@@ -208,22 +210,7 @@ input.inline-num {
 .day-note { display: flex; gap: 6px; align-items: flex-start; margin-top: 14px; max-width: 460px; }
 .note-field { position: relative; flex: 1; min-width: 0; }
 .note-actions { display: flex; gap: 6px; }
-.day-note textarea::placeholder, .note-dialog textarea::placeholder { color: var(--muted); opacity: 1; }
-.day-note textarea, .note-dialog textarea {
-  display: block;
-  width: 100%;
-  font: inherit;
-  font-size: 14px;
-  color: var(--ink);
-  background: var(--bg);
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  padding: 8px 10px;
-  resize: none;
-  user-select: text;
-}
 .day-note textarea { overflow: hidden; padding-right: 56px; }
-.day-note textarea:focus, .note-dialog textarea:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
 .note-saved { position: absolute; right: 10px; top: 9px; font-size: 12px; font-weight: 700; color: var(--accent); }
 
 /* Stats */
@@ -339,7 +326,6 @@ table.sheet tr.saved td { animation: saved-flash 4s ease-out; }
 .saved-tag { font-size: 12px; font-weight: 700; color: var(--accent); }
 table.sheet td.note-cell { width: 1%; padding-left: 4px; padding-right: 0; text-align: right; }
 .row-note { display: inline-flex; padding: 4px; background: transparent; color: var(--muted); border-radius: 6px; opacity: 0; }
-.row-note svg { fill: none; stroke: currentColor; stroke-width: 1.3; stroke-linecap: round; stroke-linejoin: round; }
 tr.editable:hover .row-note, .row-note:focus-visible, .row-note.has-note { opacity: 1; }
 .row-note.has-note { color: var(--accent); }
 .row-note.has-note svg path:first-child { fill: currentColor; fill-opacity: .2; }

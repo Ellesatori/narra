@@ -331,10 +331,9 @@ fn punch(app: AppHandle, kind: String, date: String, at: Option<i64>) -> Result<
         return Err(format!("Bad date: {date}"));
     }
     update_data(&app, |s| {
-        let open = s.open_session();
         match kind.as_str() {
             "in" => {
-                if open.is_some() {
+                if s.open_session().is_some() {
                     return Err("You're already timed in. Time out first.".into());
                 }
                 if s.sheet_mode() {
