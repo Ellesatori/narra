@@ -128,7 +128,7 @@ header { display: flex; justify-content: space-between; align-items: center; }
   padding: 6px 8px;
   user-select: text;
 }
-.forgot input::placeholder { color: var(--muted); opacity: 1; }
+.forgot input::placeholder { color: var(--muted); opacity: 1; font-size: 12px; font-weight: 500; }
 .forgot input:focus { outline: 2px solid var(--gold-ink); outline-offset: -2px; }
 .ghost { width: 28px; height: 28px; border-radius: 99px; background: var(--faint); color: var(--muted); }
 
