@@ -61,6 +61,12 @@ header { display: flex; justify-content: space-between; align-items: center; }
 .brand .logo { width: 18px; height: 18px; object-fit: contain; }
 .brand { display: flex; align-items: center; gap: 6px; font-weight: 700; font-size: 13px; }
 .brand:hover { opacity: .8; }
+.head-right { display: flex; align-items: center; gap: 6px; }
+.note-btn { display: inline-flex; padding: 3px; border-radius: 6px; color: var(--muted); }
+.note-btn svg { fill: none; stroke: currentColor; stroke-width: 1.3; stroke-linecap: round; stroke-linejoin: round; }
+.note-btn:hover { color: var(--ink); background: var(--faint); }
+.note-btn.has-note { color: var(--ink); }
+.note-btn.has-note svg path:first-child { fill: currentColor; fill-opacity: .2; }
 
 .pill {
   font-size: 11px;
@@ -112,6 +118,7 @@ header { display: flex; justify-content: space-between; align-items: center; }
   padding: 6px 8px;
   user-select: text;
 }
+.forgot input::placeholder { color: var(--muted); opacity: 1; }
 .forgot input:focus { outline: 2px solid var(--gold-ink); outline-offset: -2px; }
 .ghost { width: 28px; height: 28px; border-radius: 99px; background: var(--faint); color: var(--muted); }
 

@@ -56,6 +56,7 @@ struct View {
     name: String,
     monthly_rate: Option<f64>,
     days: BTreeMap<String, Day>,
+    notes: BTreeMap<String, String>,
     backup_path: String,
     mode: String,
     has_sheet: bool,
@@ -98,6 +99,7 @@ fn view(app: &AppHandle) -> View {
         name: store.name.clone(),
         monthly_rate: store.monthly_rate,
         days: store.days.clone(),
+        notes: store.notes.clone(),
         backup_path: documents(app).map(|d| d.join(BACKUP_FILE).display().to_string()).unwrap_or_default(),
         mode: store.mode.clone(),
         has_sheet: store.has_sheet(),
@@ -388,6 +390,16 @@ fn save_day(app: AppHandle, date: String, day: Day) -> Result<View, String> {
         Ok(())
     })
     .map(|(_, view)| view)
+}
+
+/// Set or clear the private note on a day. Notes stay in Narra: not in the PDF, and the
+/// date isn't marked for sheet sync.
+#[tauri::command]
+fn save_note(app: AppHandle, date: String, text: String) -> Result<View, String> {
+    if !valid_date(&date) {
+        return Err(format!("Bad date: {date}"));
+    }
+    update_data(&app, |s| s.set_note(&date, &text)).map(|(_, view)| view)
 }
 
 /// Add days imported from the Google Sheet. Days already in Narra are kept as they are.
@@ -830,6 +842,7 @@ fn main() {
             load,
             punch,
             save_day,
+            save_note,
             import_days,
             set_profile,
             save_sheet_link,

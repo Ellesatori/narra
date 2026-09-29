@@ -24,11 +24,16 @@ function render(now = Date.now()) {
   if (!view) return;
   const ready = !!view.mode;
   const forgotOpen = !$('forgotPane').hidden;
+  const noteOpen = !$('notePane').hidden;
   $('setupPane').hidden = ready;
-  $('mainPane').hidden = !ready || forgotOpen;
-  if (!ready) $('forgotPane').hidden = true;
+  $('mainPane').hidden = !ready || forgotOpen || noteOpen;
+  if (!ready) { $('forgotPane').hidden = true; $('notePane').hidden = true; }
 
   const t = todayState(view, holidayMap(holidays), now);
+  const note = noteFor(view, t.key);
+  $('noteBtn').hidden = !ready;
+  $('noteBtn').classList.toggle('has-note', !!note);
+  $('noteBtn').title = note || 'Add a note for today';
   const unsynced = view.mode === 'sheet' && (view.unsynced || view.sync_error);
 
   const pill = $('pill');
@@ -104,10 +109,21 @@ async function punch(at = null) {
 }
 
 function showForgot(open) {
+  if (open) $('notePane').hidden = true;
   $('forgotPane').hidden = !open;
   if (open) {
     $('forgotTime').value = nowHHMM();
     $('forgotTime').focus();
+  }
+  render();
+}
+
+function showNote(open) {
+  if (open) $('forgotPane').hidden = true;
+  $('notePane').hidden = !open;
+  if (open) {
+    $('noteInput').value = noteFor(view, todayState(view, holidayMap(holidays)).key);
+    $('noteInput').focus();
   }
   render();
 }
@@ -134,6 +150,22 @@ $('forgotPane').onsubmit = e => {
   const at = pickedTime($('forgotTime').value);
   showForgot(false);
   punch(at);
+};
+$('noteBtn').innerHTML = NOTE_ICON;
+$('noteBtn').onclick = () => showNote($('notePane').hidden);
+$('noteCancel').onclick = () => showNote(false);
+$('noteInput').addEventListener('keydown', e => { if (e.key === 'Escape') showNote(false); });
+$('notePane').onsubmit = async e => {
+  e.preventDefault();
+  const key = todayState(view, holidayMap(holidays)).key;
+  const text = $('noteInput').value;
+  try {
+    view = await saveNote(invoke, key, text);
+    showNote(false);
+    flash(text.trim() ? 'Note saved' : 'Note removed');
+  } catch (err) {
+    flash(String(err), true);
+  }
 };
 $('openMain').onclick = () => invoke('show_main_view', { view: null });
 $('setupBtn').onclick = () => invoke('show_main_view', { view: 'settings' });

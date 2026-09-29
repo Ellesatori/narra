@@ -9,6 +9,7 @@ use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 pub const DEFAULT_REMIND_HOURS: f64 = 8.0;
+pub const NOTE_MAX_CHARS: usize = 500;
 
 /// One stretch of work. Times are epoch ms, rounded to the minute like the timesheet.
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
@@ -56,6 +57,9 @@ pub struct Store {
     pub monthly_rate: Option<f64>,
     /// The timesheet: Eastern date -> day.
     pub days: BTreeMap<String, Day>,
+    /// Private notes by timesheet date, for the user's own reference. Kept apart from
+    /// `days` so replacing a day never loses its note. Not in the PDF or the sheet.
+    pub notes: BTreeMap<String, String>,
 
     /// "local" (timesheet lives in Narra) or "sheet" (also kept in a Google Sheet).
     /// Empty until onboarding is finished.
@@ -110,6 +114,7 @@ impl Store {
             "name": self.name,
             "monthly_rate": self.monthly_rate,
             "days": self.days,
+            "notes": self.notes,
             "custom_holidays": self.custom,
             "removed_holidays": self.removed,
         })
@@ -155,6 +160,20 @@ impl Store {
             day.sessions[i].end = Some(at);
         }
         Ok(date)
+    }
+
+    /// Set a day's note; blank text removes it.
+    pub fn set_note(&mut self, date: &str, text: &str) -> Result<(), String> {
+        let text = text.trim();
+        if text.chars().count() > NOTE_MAX_CHARS {
+            return Err(format!("Keep notes under {NOTE_MAX_CHARS} characters."));
+        }
+        if text.is_empty() {
+            self.notes.remove(date);
+        } else {
+            self.notes.insert(date.to_string(), text.to_string());
+        }
+        Ok(())
     }
 }
 
@@ -225,5 +244,47 @@ mod tests {
     #[test]
     fn time_out_needs_an_open_session() {
         assert!(Store::default().time_out(10 * MIN, false).is_err());
+    }
+
+    #[test]
+    fn notes_are_trimmed_edited_and_removed_when_empty() {
+        let mut s = Store::default();
+        s.set_note("2026-09-30", "  Clocked in early  ").unwrap();
+        assert_eq!(s.notes["2026-09-30"], "Clocked in early");
+        s.set_note("2026-09-30", "Filed emergency leave").unwrap();
+        assert_eq!(s.notes["2026-09-30"], "Filed emergency leave");
+        s.set_note("2026-09-30", "   ").unwrap();
+        assert!(s.notes.get("2026-09-30").is_none());
+    }
+
+    #[test]
+    fn overlong_notes_are_refused_and_keep_the_old_note() {
+        let mut s = Store::default();
+        s.set_note("2026-09-30", "kept").unwrap();
+        assert!(s.set_note("2026-09-30", &"x".repeat(501)).is_err());
+        assert_eq!(s.notes["2026-09-30"], "kept");
+        assert!(s.set_note("2026-09-30", &"é".repeat(500)).is_ok());
+    }
+
+    #[test]
+    fn a_note_survives_its_day_being_dropped() {
+        let mut s = timed_in_at(10 * MIN);
+        s.set_note("2026-09-30", "Came in early").unwrap();
+        s.time_out(10 * MIN, false).unwrap();
+        assert!(s.days.get("2026-09-30").is_none());
+        assert_eq!(s.notes["2026-09-30"], "Came in early");
+    }
+
+    #[test]
+    fn backup_includes_notes() {
+        let mut s = Store::default();
+        s.set_note("2026-09-30", "Filed emergency leave").unwrap();
+        assert_eq!(s.backup_json()["notes"]["2026-09-30"], "Filed emergency leave");
+    }
+
+    #[test]
+    fn an_old_store_without_notes_still_loads() {
+        let s: Store = serde_json::from_str(r#"{"name":"Lei","days":{}}"#).unwrap();
+        assert!(s.notes.is_empty());
     }
 }
