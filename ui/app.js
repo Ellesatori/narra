@@ -746,11 +746,14 @@ async function punch(at = null) {
     return;
   }
   holidayArmed = false;
+  const dropping = at === null && stoppingInStartMinute(t);
   busy = true;
   try {
     view = await punchNow(invoke, t, at);
     const now = today();
-    toast(now.open ? `Timed in at ${clock(now.since, PH)} Manila (${clock(now.since)} New York)` : `Timed out. ${hours(now.hours)} hrs today.`);
+    toast(now.open ? `Timed in at ${clock(now.since, PH)} Manila (${clock(now.since)} New York)`
+      : dropping ? 'Stopped within a minute, so nothing was logged.'
+      : `Timed out. ${hours(now.hours)} hrs today.`);
   } catch (e) {
     toast(String(e), true);
   } finally {

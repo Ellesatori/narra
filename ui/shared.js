@@ -255,6 +255,11 @@ function nextWeekdayHoliday(lists, key) {
     .sort((a, b) => a.date.localeCompare(b.date))[0];
 }
 
+/** Timing out now would land in the minute the session started, so nothing gets logged. */
+function stoppingInStartMinute(t) {
+  return t.open && Math.floor(Date.now() / 60000) * 60000 <= t.since;
+}
+
 /** Time In / Time Out through the backend; returns the new view. */
 function punchNow(invoke, t, at = null) {
   const kind = t.open ? 'out' : 'in';

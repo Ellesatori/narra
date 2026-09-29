@@ -86,12 +86,15 @@ async function punch(at = null) {
     return;
   }
   holidayArmed = false;
+  const dropping = at === null && stoppingInStartMinute(t);
   busy = true;
   render();
   try {
     view = await punchNow(invoke, t, at);
     const now = todayState(view, holidayMap(holidays));
-    flash(now.open ? `Timed in at ${clock(now.since, PH)} Manila` : `Timed out · ${hours(now.hours)} hrs today`);
+    flash(now.open ? `Timed in at ${clock(now.since, PH)} Manila`
+      : dropping ? 'Stopped within a minute · nothing logged'
+      : `Timed out · ${hours(now.hours)} hrs today`);
   } catch (e) {
     flash(String(e), true);
   } finally {

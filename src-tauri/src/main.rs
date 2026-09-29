@@ -317,6 +317,7 @@ fn load(app: AppHandle) -> View {
 #[tauri::command]
 fn punch(app: AppHandle, kind: String, date: String, at: Option<i64>) -> Result<View, String> {
     let now = now_ms();
+    let picked = at.is_some();
     let at = to_minute(at.unwrap_or(now));
     if at > now + 60_000 {
         return Err("That time is in the future.".into());
@@ -346,14 +347,7 @@ fn punch(app: AppHandle, kind: String, date: String, at: Option<i64>) -> Result<
                 Ok(())
             }
             "out" => {
-                let Some((d, i)) = open else {
-                    return Err("You're not timed in.".into());
-                };
-                let session = &mut s.days.get_mut(&d).unwrap().sessions[i];
-                if at <= session.start {
-                    return Err("Time out must be after your time in.".into());
-                }
-                session.end = Some(at);
+                let d = s.time_out(at, picked)?;
                 if s.sheet_mode() {
                     s.dirty.insert(d);
                 }

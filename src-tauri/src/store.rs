@@ -133,6 +133,29 @@ impl Store {
             day.sessions.iter().position(|s| s.end.is_none()).map(|i| (date.clone(), i))
         })
     }
+
+    /// Close the running session at `at` (already rounded to the minute) and return its
+    /// date. `picked` is true when the user chose the time rather than "now". Timing out
+    /// in the same minute as timing in logs nothing, so that session is simply dropped.
+    pub fn time_out(&mut self, at: i64, picked: bool) -> Result<String, String> {
+        let Some((date, i)) = self.open_session() else {
+            return Err("You're not timed in.".into());
+        };
+        let day = self.days.get_mut(&date).unwrap();
+        let start = day.sessions[i].start;
+        if at < start || (at == start && picked) {
+            return Err("Time out must be after your time in.".into());
+        }
+        if at == start {
+            day.sessions.remove(i);
+            if day.is_empty() {
+                self.days.remove(&date);
+            }
+        } else {
+            day.sessions[i].end = Some(at);
+        }
+        Ok(date)
+    }
 }
 
 pub fn write_atomic(path: &Path, body: &str) -> Result<(), String> {
@@ -154,4 +177,53 @@ pub fn now_ms() -> i64 {
 /// Round to the whole minute, the timesheet's precision.
 pub fn to_minute(ms: i64) -> i64 {
     ms - ms.rem_euclid(60_000)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const MIN: i64 = 60_000;
+
+    fn timed_in_at(start: i64) -> Store {
+        let mut s = Store::default();
+        s.days.entry("2026-09-30".into()).or_default().sessions.push(Session { start, end: None });
+        s
+    }
+
+    #[test]
+    fn time_out_closes_the_open_session() {
+        let mut s = timed_in_at(10 * MIN);
+        assert_eq!(s.time_out(12 * MIN, false), Ok("2026-09-30".to_string()));
+        assert_eq!(s.days["2026-09-30"].sessions, vec![Session { start: 10 * MIN, end: Some(12 * MIN) }]);
+    }
+
+    #[test]
+    fn time_out_in_the_same_minute_drops_the_session() {
+        let mut s = timed_in_at(10 * MIN);
+        assert_eq!(s.time_out(10 * MIN, false), Ok("2026-09-30".to_string()));
+        assert!(s.days.get("2026-09-30").is_none());
+        assert!(s.open_session().is_none());
+    }
+
+    #[test]
+    fn same_minute_drop_keeps_the_rest_of_the_day() {
+        let mut s = timed_in_at(10 * MIN);
+        s.days.get_mut("2026-09-30").unwrap().sessions.insert(0, Session { start: 8 * MIN, end: Some(9 * MIN) });
+        s.time_out(10 * MIN, false).unwrap();
+        assert_eq!(s.days["2026-09-30"].sessions, vec![Session { start: 8 * MIN, end: Some(9 * MIN) }]);
+    }
+
+    #[test]
+    fn a_picked_time_must_still_be_after_time_in() {
+        let mut s = timed_in_at(10 * MIN);
+        assert!(s.time_out(10 * MIN, true).is_err());
+        assert!(s.time_out(9 * MIN, false).is_err());
+        assert!(s.open_session().is_some());
+    }
+
+    #[test]
+    fn time_out_needs_an_open_session() {
+        assert!(Store::default().time_out(10 * MIN, false).is_err());
+    }
 }
